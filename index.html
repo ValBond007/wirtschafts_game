@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUNKER - Überleben im Wirtschaftskrieg</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- INTRO SCREEN -->
+    <div id="intro-screen" class="screen active">
+        <div class="intro-container">
+            <div class="intro-icon">&#9762;</div>
+            <h1>BUNKER</h1>
+            <h2>Überleben im Wirtschaftskrieg</h2>
+            <div class="intro-text">
+                <p>Die Welt steht am Abgrund. Spannungen zwischen den Grossmächten eskalieren, und ein nuklearer Krieg droht.</p>
+                <p>Deine einzige Chance: Sammle die nötigen Ressourcen und sichere dir einen Platz in einem der wenigen Bunker, bevor es zu spät ist.</p>
+                <p><strong>Doch Vorsicht:</strong> Es gibt nur halb so viele Bunkerplätze wie Spieler. Nicht alle werden überleben.</p>
+                <div class="intro-rules">
+                    <h3>So funktioniert's:</h3>
+                    <ul>
+                        <li><strong>Reise</strong> zwischen Kontinenten und handle mit lokalen Währungen</li>
+                        <li><strong>Kaufe</strong> Ressourcen: Lebensmittel, Technik, Militär und Energie</li>
+                        <li><strong>Tausche</strong> Währungen an der Bank — aber Achtung auf die Wechselkurse!</li>
+                        <li><strong>Baue</strong> deinen Bunker, bevor die Zeit abläuft</li>
+                        <li><strong>Kämpfe</strong> gegen Mitspieler um wertvolle Ressourcen</li>
+                    </ul>
+                    <p class="intro-highlight">Wirtschaftliche Konzepte: Inflation, Wechselkurse, Kryptowährung, Angebot & Nachfrage, Opportunitätskosten</p>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-large" onclick="showSetup()">Spiel starten</button>
+        </div>
+    </div>
+
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen" class="screen">
+        <div class="setup-container">
+            <h2>Spiel einrichten</h2>
+            <div class="setup-field">
+                <label>Anzahl Spieler:</label>
+                <div class="player-count-selector">
+                    <button class="btn btn-count active" onclick="setPlayerCount(2)">2</button>
+                    <button class="btn btn-count" onclick="setPlayerCount(3)">3</button>
+                    <button class="btn btn-count" onclick="setPlayerCount(4)">4</button>
+                </div>
+            </div>
+            <div id="player-names" class="setup-field">
+                <label>Spielernamen:</label>
+                <input type="text" id="name-0" placeholder="Spieler 1" maxlength="15">
+                <input type="text" id="name-1" placeholder="Spieler 2" maxlength="15">
+            </div>
+            <button class="btn btn-primary btn-large" onclick="startGame()">Los geht's!</button>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game-screen" class="screen">
+        <!-- Header -->
+        <div id="game-header">
+            <div class="header-left">
+                <span class="header-label">Runde</span>
+                <span id="round-display" class="header-value">1</span>
+            </div>
+            <div class="header-center">
+                <div id="doomsday-bar">
+                    <div id="doomsday-fill"></div>
+                </div>
+                <span id="doomsday-text">Bedrohungslevel</span>
+            </div>
+            <div class="header-right">
+                <span class="header-label">Am Zug:</span>
+                <span id="current-player-display" class="header-value"></span>
+                <span id="ap-display" class="ap-badge"></span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="game-content">
+            <!-- Map -->
+            <div id="map-area">
+                <div id="map-container">
+                    <!-- Connections drawn as lines -->
+                    <svg id="map-connections" viewBox="0 0 700 450">
+                        <line x1="160" y1="120" x2="460" y2="100" class="connection"/>
+                        <line x1="160" y1="120" x2="180" y2="300" class="connection"/>
+                        <line x1="460" y1="100" x2="500" y2="280" class="connection"/>
+                        <line x1="180" y1="300" x2="500" y2="280" class="connection"/>
+                        <line x1="460" y1="100" x2="420" y2="200" class="connection connection-bunker"/>
+                        <line x1="500" y1="280" x2="420" y2="200" class="connection connection-bunker"/>
+                        <line x1="180" y1="300" x2="620" y2="380" class="connection connection-bunker"/>
+                        <line x1="500" y1="280" x2="620" y2="380" class="connection connection-bunker"/>
+                    </svg>
+
+                    <!-- Continent nodes -->
+                    <div class="map-node continent" id="node-nordamerika" data-loc="nordamerika" onclick="handleMapClick('nordamerika')" style="left:100px;top:70px;">
+                        <div class="node-icon">&#127482;&#127480;</div>
+                        <div class="node-name">Nordamerika</div>
+                        <div class="node-info">USD | Militär</div>
+                    </div>
+                    <div class="map-node continent" id="node-europa" data-loc="europa" onclick="handleMapClick('europa')" style="left:400px;top:50px;">
+                        <div class="node-icon">&#127466;&#127482;</div>
+                        <div class="node-name">Europa</div>
+                        <div class="node-info">EUR | Technik</div>
+                    </div>
+                    <div class="map-node continent" id="node-suedamerika" data-loc="suedamerika" onclick="handleMapClick('suedamerika')" style="left:120px;top:250px;">
+                        <div class="node-icon">&#127463;&#127479;</div>
+                        <div class="node-name">Südamerika</div>
+                        <div class="node-info">Peso | Lebensmittel</div>
+                    </div>
+                    <div class="map-node continent" id="node-afrika" data-loc="afrika" onclick="handleMapClick('afrika')" style="left:440px;top:230px;">
+                        <div class="node-icon">&#127462;&#127467;</div>
+                        <div class="node-name">Afrika</div>
+                        <div class="node-info">ARA | Energie</div>
+                    </div>
+
+                    <!-- Bunker nodes -->
+                    <div class="map-node bunker" id="node-alpen" data-loc="alpen" onclick="handleMapClick('alpen')" style="left:360px;top:155px;">
+                        <div class="node-icon">&#9961;</div>
+                        <div class="node-name">Südl. Alpen</div>
+                        <div class="node-status" id="alpen-status">Frei</div>
+                    </div>
+                    <div class="map-node bunker" id="node-neuseeland" data-loc="neuseeland" onclick="handleMapClick('neuseeland')" style="left:560px;top:330px;">
+                        <div class="node-icon">&#9961;</div>
+                        <div class="node-name">Neuseeland</div>
+                        <div class="node-status" id="neuseeland-status">Frei</div>
+                    </div>
+
+                    <!-- Player markers rendered dynamically -->
+                    <div id="player-markers"></div>
+                </div>
+            </div>
+
+            <!-- Side Panel -->
+            <div id="side-panel">
+                <!-- Player Info -->
+                <div class="panel-section" id="player-info">
+                    <h3 id="player-info-name"></h3>
+                    <div class="info-row">
+                        <span class="info-label">Standort:</span>
+                        <span id="player-location" class="info-value"></span>
+                    </div>
+
+                    <h4>Geld</h4>
+                    <div class="money-grid">
+                        <div class="money-item"><span class="currency-tag usd">USD</span><span id="money-usd">0</span></div>
+                        <div class="money-item"><span class="currency-tag eur">EUR</span><span id="money-eur">0</span></div>
+                        <div class="money-item"><span class="currency-tag peso">Peso</span><span id="money-peso">0</span></div>
+                        <div class="money-item"><span class="currency-tag ara">ARA</span><span id="money-ara">0</span></div>
+                        <div class="money-item"><span class="currency-tag crypto">Crypto</span><span id="money-crypto">0</span></div>
+                    </div>
+
+                    <h4>Ressourcen</h4>
+                    <div class="resource-grid">
+                        <div class="resource-item">
+                            <span class="res-icon">&#9876;</span>
+                            <span class="res-name">Militär</span>
+                            <span id="res-military" class="res-count">0</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="res-icon">&#127805;</span>
+                            <span class="res-name">Lebensmittel</span>
+                            <span id="res-food" class="res-count">0</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="res-icon">&#9881;</span>
+                            <span class="res-name">Technik</span>
+                            <span id="res-tech" class="res-count">0</span>
+                        </div>
+                        <div class="resource-item">
+                            <span class="res-icon">&#9889;</span>
+                            <span class="res-name">Energie</span>
+                            <span id="res-energy" class="res-count">0</span>
+                        </div>
+                    </div>
+
+                    <div id="bunker-progress-section" style="display:none;">
+                        <h4>Bunker-Fortschritt</h4>
+                        <div id="bunker-progress-bar-container">
+                            <div id="bunker-progress-fill"></div>
+                        </div>
+                        <span id="bunker-progress-text"></span>
+                    </div>
+                </div>
+
+                <!-- Exchange Rates -->
+                <div class="panel-section" id="exchange-panel">
+                    <h4>Wechselkurse (zu EUR)</h4>
+                    <div class="rate-grid">
+                        <div class="rate-item"><span>1 USD =</span><span id="rate-usd"></span><span>EUR</span></div>
+                        <div class="rate-item"><span>100 Peso =</span><span id="rate-peso"></span><span>EUR</span></div>
+                        <div class="rate-item"><span>100 ARA =</span><span id="rate-ara"></span><span>EUR</span></div>
+                        <div class="rate-item"><span>1 Crypto =</span><span id="rate-crypto"></span><span>EUR</span></div>
+                    </div>
+                </div>
+
+                <!-- Resource Prices -->
+                <div class="panel-section" id="prices-panel">
+                    <h4>Ressourcenpreise (lokal)</h4>
+                    <div id="prices-list" class="rate-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Bar -->
+        <div id="actions-bar">
+            <button class="btn btn-action" id="btn-travel" onclick="openTravelModal()">
+                <span class="action-icon">&#9992;</span> Reisen
+            </button>
+            <button class="btn btn-action" id="btn-buy" onclick="buyResource()">
+                <span class="action-icon">&#128176;</span> Kaufen
+            </button>
+            <button class="btn btn-action" id="btn-exchange" onclick="openExchangeModal()">
+                <span class="action-icon">&#127974;</span> Geld wechseln
+            </button>
+            <button class="btn btn-action" id="btn-crypto" onclick="openCryptoModal()">
+                <span class="action-icon">&#8383;</span> Krypto
+            </button>
+            <button class="btn btn-action" id="btn-attack" onclick="openAttackModal()">
+                <span class="action-icon">&#9876;</span> Angreifen
+            </button>
+            <button class="btn btn-action" id="btn-bunker" onclick="buildBunker()">
+                <span class="action-icon">&#9961;</span> Bunker bauen
+            </button>
+            <button class="btn btn-end-turn" onclick="endTurn()">
+                Zug beenden &#10140;
+            </button>
+        </div>
+
+        <!-- Event Log -->
+        <div id="event-log">
+            <div id="event-log-content"></div>
+        </div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="end-screen" class="screen">
+        <div class="end-container">
+            <div id="end-icon"></div>
+            <h1 id="end-title"></h1>
+            <div id="end-results"></div>
+            <button class="btn btn-primary btn-large" onclick="location.reload()">Nochmal spielen</button>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modal-title"></h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Dice Roll Animation Overlay -->
+    <div id="dice-overlay" class="dice-overlay">
+        <div class="dice-container">
+            <div id="dice-content"></div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
