@@ -28,6 +28,7 @@
                 <button class="btn btn-ghost btn-big" id="btn-intro-help">Spielanleitung</button>
             </div>
             <p class="intro-hint">Tipp: Ton an! Die Weltkugel kannst du mit der Maus drehen und zoomen.</p>
+            <div id="hall" class="hall hidden"></div>
         </div>
     </section>
 
@@ -56,7 +57,14 @@
                     <button data-speed="fast">Schnell</button>
                 </div>
             </div>
-            <div id="char-info" class="char-info"></div>
+            <div class="setup-option">
+                <span>Grafik:</span>
+                <div class="seg" id="seg-quality">
+                    <button data-quality="auto">Auto</button>
+                    <button data-quality="high">Hoch</button>
+                    <button data-quality="low">Niedrig</button>
+                </div>
+            </div>
             <p id="setup-summary" class="setup-summary"></p>
             <button class="btn btn-primary btn-big full" id="btn-start">☢ Countdown starten</button>
         </div>
@@ -79,6 +87,7 @@
                 <div id="tb-player"></div>
                 <div id="tb-ap"></div>
                 <button class="icon-btn" id="btn-speed" title="KI-Tempo ändern">⏩</button>
+                <button class="icon-btn" id="btn-quality" title="Grafikqualität ändern">🖥️</button>
                 <button class="icon-btn" id="btn-mute" title="Ton an/aus (M)">🔊</button>
                 <button class="icon-btn" id="btn-help" title="Spielanleitung">❓</button>
             </div>
@@ -96,6 +105,10 @@
             <div id="fx"></div>
             <div class="panel-title">Rohstoffpreise</div>
             <div id="prices"></div>
+            <div id="laws-box" class="hidden">
+                <div class="panel-title">Gesetze (Volksabstimmung)</div>
+                <div id="laws" class="chips"></div>
+            </div>
             <div class="panel-title">Bunker</div>
             <div id="bunker-list"></div>
             <div class="panel-title">Spieler</div>
@@ -106,6 +119,7 @@
             <button class="act" data-act="travel" data-key="1"><i>✈️</i><span>Reisen</span></button>
             <button class="act" data-act="market" data-key="2"><i>🛒</i><span>Markt</span></button>
             <button class="act" data-act="work" data-key="3"><i>👷</i><span>Arbeiten</span></button>
+            <button class="act" data-act="study" data-key="q"><i>📚</i><span>Lernen</span></button>
             <button class="act" data-act="bank" data-key="4"><i>🏦</i><span>Bank</span></button>
             <button class="act" data-act="crypto" data-key="5"><i>₿</i><span>Krypto</span></button>
             <button class="act" data-act="eat" data-key="6"><i>🌽</i><span>Essen +1AP</span></button>
@@ -164,6 +178,19 @@
             <div class="handover-small">Gib das Gerät weiter an</div>
             <div class="handover-name" id="handover-name"></div>
             <button class="btn btn-primary btn-big" id="handover-ok">Ich bin bereit</button>
+        </div>
+    </div>
+
+    <!-- GUIDED TOUR -->
+    <div id="tour" class="hidden">
+        <div id="tour-hole"></div>
+        <div id="tour-bubble">
+            <div id="tour-step"></div>
+            <div id="tour-text"></div>
+            <div class="tour-btns">
+                <button class="btn btn-small btn-ghost" id="tour-skip">Tour überspringen</button>
+                <button class="btn btn-small btn-primary" id="tour-next">Weiter</button>
+            </div>
         </div>
     </div>
 

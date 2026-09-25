@@ -52,6 +52,11 @@ Jeder Spieler wählt einen Charakter mit einer Spezialfähigkeit (oder bekommt e
 
 ## Weitere Funktionen
 
+- **🗳️ Volksabstimmung:** Alle 3 Runden stimmen alle Spieler offen über ein Gesetz ab (wie an einer Landsgemeinde), z. B. Grundeinkommen, Kryptoverbot, Zinsdeckel, Schutzraumpflicht, Vermögenssteuer. Die KI-Spieler stimmen nach ihrem Eigeninteresse. Angenommene Gesetze gelten bis zum Spielende.
+- **📚 Weiterbildung (Taste Q):** 28 Quizfragen zu Wirtschaft & Recht mit Zeitlimit. Richtige Antwort = 240 €, falsche = nichts. Nach jeder Frage gibt es eine Erklärung.
+- **Geführte Tour** beim ersten Spiel, die alle Bereiche des Bildschirms erklärt (später über ❓ erneut startbar).
+- **🏆 Ruhmeshalle** auf dem Startbildschirm mit den reichsten Überlebenden.
+- **Grafik-Einstellung** (Auto/Hoch/Niedrig). Bei «Auto» wird die Grafik auf langsamen Computern automatisch reduziert.
 - **30 Ereigniskarten**, z. B. Hyperinflation, Bank-Run, Energie-Kartell, Zollkrieg, Mindestlohn, Erbschaft, Stellvertreterkrieg (mit Raketeneinschlag auf der Karte). Jede Karte erklärt das Wirtschafts- oder Rechtsthema dahinter.
 - **Tag/Nacht:** Die Sonne wandert jede Runde weiter, auf der Nachtseite leuchten die Städte.
 - **Automatisches Speichern:** Nach einem Neuladen geht es mit «Weiterspielen» weiter.
@@ -74,6 +79,7 @@ Wer bei Kriegsausbruch noch Schulden hat, verliert sogar seinen Bunker. Die Kryp
 Rechtliche Themen: Spieler schliessen **Verträge** ab (Tauschhandel, Nichtangriffspakt). Dabei gelten **Vertragsfreiheit** und *pacta sunt servanda*. Wer einen Vertrag bricht, zahlt eine **Konventionalstrafe**.
 **Schmuggel** auf dem Schwarzmarkt ist illegal. Wer erwischt wird, bekommt eine Busse, die Ware wird beschlagnahmt und es gibt einen Eintrag ins Strafregister.
 Eine **Versicherung** überträgt das Risiko eines Raubs gegen eine Prämie. **Sanktionen/Embargos** und **UNO-Resolutionen** zeigen, wie das Völkerrecht in den Handel eingreift.
+Die **Volksabstimmungen** zeigen die direkte Demokratie der Schweiz: Wer von einem Gesetz profitiert, stimmt meist dafür (Eigeninteresse, Public Choice).
 Weitere Karten behandeln das **Kartellgesetz** (Preisabsprachen sind verboten), die **Einlagensicherung** bei einem Bank-Run, den **Mindestlohn**, das **Erbrecht** (ZGB) und die **clausula rebus sic stantibus** (Verträge bei grundlegend veränderten Umständen).
 
 ## Technik

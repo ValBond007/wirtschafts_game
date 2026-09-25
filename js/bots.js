@@ -35,8 +35,10 @@ async function botGoTo(p, dest) {
     return actTravel(p, dest);
 }
 
-function botMoneyMove(p) {
+async function botMoneyMove(p) {
     const loc = LOCATIONS[p.location];
+    const wantsStudy = !p.studiedThisTurn && (loc.isBunker || Math.random() < 0.2);
+    if (wantsStudy) return actStudy(p);
     if (!loc.isBunker && actWork(p)) return true;
     if (p.debt === 0 && !game.roundMods.bankClosed && actLoan(p)) return true;
     return false;
@@ -88,7 +90,7 @@ async function botStep(p) {
         return actEat(p);
     }
 
-    if (!loc.isBunker && !game.roundMods.bankClosed) {
+    if (!loc.isBunker && !game.roundMods.bankClosed && !game.laws.cryptoBan) {
         const cheap = game.rates.crypto < CURRENCIES.crypto.baseRate * 0.85;
         const rich = game.rates.crypto > CURRENCIES.crypto.baseRate * 1.3;
         if (p.money.crypto > 0 && rich) return actCrypto(p, 'sell', p.money.crypto);

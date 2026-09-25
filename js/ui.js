@@ -201,9 +201,9 @@ function renderPlayerCard(p) {
         ${extra}
         <div class="panel-title">Geld</div>
         <div class="money-list">${money}<div class="money-total">Bargeld total ≈ <b>${fmt(fiatEUR(p))} €</b></div></div>
-        <div class="panel-title">Ressourcen</div>
+        <div id="res-box"><div class="panel-title">Ressourcen</div>
         ${res}
-        ${bunker}`;
+        ${bunker}</div>`;
 }
 
 function sparkline(canvas, data, color) {
@@ -267,6 +267,10 @@ function renderMarket() {
 }
 
 function renderLists() {
+    const laws = Object.keys(game.laws).filter(k => game.laws[k] && LAW_LABELS[k]);
+    $('laws-box').classList.toggle('hidden', !laws.length);
+    $('laws').innerHTML = laws.map(k => `<span class="chip info">${LAW_LABELS[k]}</span>`).join('');
+
     $('bunker-list').innerHTML = BUNKER_ORDER.map(id => {
         const b = game.bunkers[id];
         let st = '<span class="st" style="color:#6b7280">gesperrt</span>';
@@ -301,7 +305,8 @@ function renderActions(p) {
         market: noAP || loc.isBunker,
         work: noAP || loc.isBunker,
         bank: noAP || game.roundMods.bankClosed,
-        crypto: noAP || game.roundMods.bankClosed,
+        crypto: noAP || game.roundMods.bankClosed || game.laws.cryptoBan,
+        study: noAP || p.studiedThisTurn,
         eat: p.resources.food < 1 || p.foodBoosts >= maxFoodBoosts(p),
         attack: noAP || p.resources.military < 1 || p.attackedThisTurn || game.roundMods.noAttacks || (!others.length && !raidable),
         contract: game.players.length < 2,
@@ -361,15 +366,26 @@ function onGlobeHover(locId, x, y) {
 
 // ===== MODAL =====
 
-function openModal(title, html, wide = false) {
+// A locked modal (vote, quiz) can only be closed by its own buttons.
+function openModal(title, html, wide = false, locked = false) {
     $('modal-title').textContent = title;
     $('modal-body').innerHTML = html;
     $('modal').classList.toggle('wide', wide);
+    $('modal').dataset.locked = locked ? '1' : '';
+    $('modal-close').style.display = locked ? 'none' : '';
     $('modal-bg').classList.add('active');
     Sound.play('click');
 }
 
-function closeModal() {
+let continueFn = null;
+
+function setContinue(fn) {
+    continueFn = fn;
+}
+
+function closeModal(force = false) {
+    if ($('modal').dataset.locked && !force) return;
+    $('modal').dataset.locked = '';
     $('modal-bg').classList.remove('active');
     if (closeModal.onClose) {
         const fn = closeModal.onClose;
@@ -467,7 +483,7 @@ function openBank() {
     const local = localCurrency(p);
     const from = FIAT.slice().sort((a, b) => toEUR(b, p.money[b]) - toEUR(a, p.money[a])).find(c => c !== local) || 'eur';
     const fee = feeFor(p);
-    const interest = game.interest * (has(p, 'bankerin') ? 0.5 : 1);
+    const interest = interestFor(p);
     openModal('🏦 Bank', `
         <div class="m-section"><h4>Geld wechseln</h4>
             ${blocked ? `<p style="color:#fca5a5">${blocked}</p>` : `<p>Gebühr ${fee === 0 ? '<b>0%</b>' : `${fee * 100}%`}. Kurse schwanken jede Runde – wechsle, wenn der Kurs gut ist!</p>`}
@@ -477,7 +493,7 @@ function openBank() {
             <div class="m-preview" id="ex-preview"></div>
             <button class="btn btn-primary full" id="ex-go" ${blocked ? 'disabled' : ''}>Wechseln (1 AP)</button></div>
         <div class="m-section"><h4>💳 Kredit</h4>
-            <p>Leihe dir ${CONFIG.loanAmountEUR} € (in Lokalwährung). Zins: <b>${Math.round(interest * 100)}% pro Runde</b> (Zinseszins!). Ab ${CONFIG.seizureDebtEUR} € Schulden pfändet die Bank jede Runde Ressourcen. <b style="color:#fca5a5">Wer bei Kriegsausbruch Schulden hat, verliert den Bunker!</b></p>
+            <p>Leihe dir ${CONFIG.loanAmountEUR} € (in Lokalwährung). Zins: <b>${Math.round(interest * 100)}% pro Runde</b> (Zinseszins!).${game.laws.rateCap ? ' <b>Zinsdeckel:</b> höchstens 400 € Kredit pro Person.' : ''} Ab ${CONFIG.seizureDebtEUR} € Schulden pfändet die Bank jede Runde Ressourcen. <b style="color:#fca5a5">Wer bei Kriegsausbruch Schulden hat, verliert den Bunker!</b></p>
             <p>Aktuelle Schulden: <b>${fmt(p.debt)} €</b></p>
             <div class="m-row"><button class="btn btn-ghost" id="loan-take" style="flex:1">Kredit aufnehmen</button><button class="btn btn-good" id="loan-repay" style="flex:1" ${p.debt <= 0 ? 'disabled' : ''}>Zurückzahlen</button></div></div>
         <div class="m-section"><h4>🛡️ Versicherung gegen Raub</h4>
@@ -658,6 +674,7 @@ function helpHTML() {
             <li><b>1 Reisen</b> – oder direkt auf die Weltkugel klicken. Gelb gestrichelte Routen sind nah und billig.</li>
             <li><b>2 Markt</b> – lokale Ressource kaufen (in Lokalwährung, sonst mit Aufschlag in Fremdwährung), verkaufen oder illegal schmuggeln.</li>
             <li><b>3 Arbeiten</b> – ${CONFIG.workEUR} € in Lokalwährung verdienen.</li>
+            <li><b>Q Weiterbildung</b> – beantworte eine Quizfrage zu Wirtschaft & Recht in ${CONFIG.quizSeconds} Sekunden. Richtig: ${CONFIG.studyEUR} €, falsch: nichts. Funktioniert auch im Bunker. Einmal pro Zug.</li>
             <li><b>4 Bank</b> – Geld wechseln (${CONFIG.exchangeFee * 100}% Gebühr), Kredit aufnehmen/zurückzahlen, Versicherung.</li>
             <li><b>5 Krypto</b> – BunkerCoin kaufen/verkaufen. Danach ${CONFIG.cryptoLockTurns} Züge Wechselsperre!</li>
             <li><b>6 Essen</b> (0 AP) – 1 Lebensmittel für +1 AP, max. 2× pro Zug.</li>
@@ -665,7 +682,10 @@ function helpHTML() {
             <li><b>8 Vertrag</b> (0 AP) – Tauschhandel oder Nichtangriffspakt. Vertragsbruch kostet ${CONFIG.pactPenaltyEUR} € Strafe.</li>
             <li><b>9 Bunker bauen</b> · <b>0 Zug beenden</b> · <b>M</b> Ton an/aus · <b>Esc</b> Fenster schliessen</li>
         </ul>
+        <h4>🗳️ Volksabstimmung</h4>
+        <p>Alle ${CONFIG.referendumEvery} Runden stimmen alle Spieler offen über ein neues Gesetz ab – wie an einer Landsgemeinde. Die Mehrheit entscheidet, bei Gleichstand ist die Vorlage abgelehnt. Angenommene Gesetze gelten bis zum Spielende (z. B. Grundeinkommen, Kryptoverbot, Zinsdeckel).</p>
         <p>💡 Der <b>Berater</b> links sagt dir jederzeit, was als Nächstes sinnvoll ist. Das Spiel speichert automatisch – du kannst später über «Weiterspielen» fortfahren.</p>
+        ${game && !game.over ? '<p><button class="btn btn-primary btn-small" id="help-tour">▶ Geführte Tour starten</button></p>' : ''}
         <h4>📚 Wirtschaft & Recht im Spiel</h4>
         <ul>
             <li><b>Wechselkurse & Inflation:</b> Kurse schwanken, Preise steigen jede Runde (Teuerung).</li>
@@ -682,6 +702,251 @@ function helpHTML() {
 
 function openHelp() {
     openModal('❓ Spielanleitung', helpHTML(), true);
+    const tourBtn = $('help-tour');
+    if (tourBtn) tourBtn.addEventListener('click', () => { closeModal(); startTour(); });
+}
+
+// ===== DIRECT DEMOCRACY UI =====
+
+function proposalHTML(prop) {
+    return `<div class="vote">
+        <div class="vote-kicker">🗳️ VOLKSABSTIMMUNG · Runde ${game.round}</div>
+        <div class="vote-icon">${prop.icon}</div>
+        <h2>${esc(prop.title)}</h2>
+        <p class="vote-text">${esc(prop.text)}</p>
+        <div class="vote-args">
+            <div class="arg pro"><b>👍 Pro</b>${esc(prop.pro)}</div>
+            <div class="arg contra"><b>👎 Contra</b>${esc(prop.contra)}</div>
+        </div>`;
+}
+
+function askVotes(prop, humans) {
+    return new Promise(resolve => {
+        const votes = {};
+        const rows = humans.map(p => `<div class="vote-row">
+            <span>${charOf(p).icon} <b>${esc(p.name)}</b></span>
+            <div class="seg"><button data-v="${p.id}:1">✅ Ja</button><button data-v="${p.id}:0">❌ Nein</button></div></div>`).join('');
+        openModal('🗳️ Volksabstimmung', `${proposalHTML(prop)}
+            <p class="muted" style="margin:10px 0">Offene Abstimmung wie an einer Landsgemeinde. Die KI-Spieler stimmen nach ihrem Eigeninteresse. Bei Gleichstand ist die Vorlage abgelehnt.</p>
+            <div class="vote-rows">${rows}</div>
+            <button class="btn btn-primary full" id="vote-go" disabled>Stimmen auszählen</button></div>`, true, true);
+        bindModal('[data-v]', el => {
+            const [id, v] = el.dataset.v.split(':');
+            votes[id] = v === '1';
+            el.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === el));
+            Sound.play('click');
+            $('vote-go').disabled = humans.some(p => votes[p.id] === undefined);
+        });
+        $('vote-go').addEventListener('click', () => {
+            closeModal(true);
+            resolve(votes);
+        });
+    });
+}
+
+function showVoteResult(prop, votes, accepted, extra) {
+    return new Promise(resolve => {
+        const yes = game.players.filter(p => votes[p.id]).length;
+        const no = game.players.length - yes;
+        const list = game.players.map(p => `<span class="vote-chip ${votes[p.id] ? 'yes' : 'no'}">${charOf(p).icon} ${esc(p.name)} ${votes[p.id] ? '✅' : '❌'}</span>`).join('');
+        openModal('🗳️ Resultat', `${proposalHTML(prop)}
+            <div class="tally">
+                <div class="tally-row"><span>Ja</span><div class="tally-bar"><div class="tally-fill yes" style="--w:${(yes / game.players.length) * 100}%"></div></div><b>${yes}</b></div>
+                <div class="tally-row"><span>Nein</span><div class="tally-bar"><div class="tally-fill no" style="--w:${(no / game.players.length) * 100}%"></div></div><b>${no}</b></div>
+            </div>
+            <div class="vote-list">${list}</div>
+            <div class="vote-stamp ${accepted ? 'yes' : 'no'}">${accepted ? 'ANGENOMMEN' : 'ABGELEHNT'}</div>
+            ${extra ? `<p class="vote-extra">${esc(extra)}</p>` : ''}
+            <div class="card-lesson"><b>Wirtschaft & Recht:</b> ${esc(prop.lesson)}</div>
+            <button class="btn btn-primary full" id="vote-ok">Weiter</button></div>`, true, true);
+        Sound.play(accepted ? 'win' : 'lose');
+        const done = () => {
+            if (!$('vote-ok')) return;
+            setContinue(null);
+            closeModal(true);
+            resolve();
+        };
+        setContinue(done);
+        $('vote-ok').addEventListener('click', done);
+        if (game.players.every(p => p.isBot)) setTimeout(done, 3500);
+    });
+}
+
+// ===== QUIZ UI =====
+
+function askQuiz(p, q) {
+    return new Promise(resolve => {
+        const order = shuffle(q.o.map((text, i) => ({ text, i })));
+        const buttons = order.map((o, k) => `<button class="m-option quiz-opt" data-i="${o.i}"><span class="mo-icon quiz-key">${k + 1}</span><span class="mo-main">${esc(o.text)}</span></button>`).join('');
+        openModal(`📚 Weiterbildung – ${p.name}`, `
+            <div class="quiz-timer"><div id="quiz-fill"></div></div>
+            <p class="quiz-q">${esc(q.q)}</p>
+            <div class="m-options" id="quiz-opts">${buttons}</div>
+            <div id="quiz-after"></div>`, false, true);
+        const started = Date.now();
+        const total = CONFIG.quizSeconds * 1000;
+        let lastTick = CONFIG.quizSeconds;
+        let answered = false;
+        const timer = setInterval(() => {
+            const left = total - (Date.now() - started);
+            $('quiz-fill').style.width = `${Math.max(0, (left / total) * 100)}%`;
+            const secs = Math.ceil(left / 1000);
+            if (secs <= 5 && secs < lastTick && secs > 0) Sound.play('click');
+            lastTick = secs;
+            if (left <= 0) answer(-1);
+        }, 100);
+
+        function answer(chosen) {
+            if (answered) return;
+            answered = true;
+            clearInterval(timer);
+            const correct = chosen === q.a;
+            document.querySelectorAll('.quiz-opt').forEach(btn => {
+                const i = Number(btn.dataset.i);
+                btn.disabled = true;
+                btn.classList.toggle('right', i === q.a);
+                btn.classList.toggle('wrong', i === chosen && !correct);
+            });
+            $('quiz-after').innerHTML = `
+                <div class="quiz-verdict ${correct ? 'yes' : 'no'}">${correct ? `✅ Richtig! +${CONFIG.studyEUR} €` : chosen === -1 ? '⏰ Zeit abgelaufen!' : '❌ Leider falsch.'}</div>
+                <div class="card-lesson"><b>Erklärung:</b> ${esc(q.e)}</div>
+                <button class="btn btn-primary full" id="quiz-ok">Weiter</button>`;
+            Sound.play(correct ? 'pickup' : 'error');
+            const done = () => {
+                setContinue(null);
+                answerQuiz.fn = null;
+                closeModal(true);
+                resolve(correct);
+            };
+            setContinue(done);
+            $('quiz-ok').addEventListener('click', done);
+        }
+        answerQuiz.fn = k => {
+            const btn = document.querySelectorAll('.quiz-opt')[k];
+            if (btn) answer(Number(btn.dataset.i));
+        };
+        bindModal('.quiz-opt', el => answer(Number(el.dataset.i)));
+    });
+}
+
+function answerQuiz(k) {
+    if (answerQuiz.fn) answerQuiz.fn(k);
+}
+
+// ===== GUIDED TOUR =====
+
+const TOUR_KEY = 'bunker-tour-done';
+const TOUR = [
+    { sel: null, place: 'center', text: 'Willkommen bei BUNKER! 👋 Ich zeige dir in einer Minute, wie alles funktioniert.' },
+    { sel: '#player-card .pc-head', place: 'right', text: 'Das bist du – mit deinem Charakter. Direkt darunter steht deine Spezialfähigkeit.' },
+    { sel: '#player-card .advisor', place: 'right', text: 'Der Berater 💡 sagt dir jederzeit, was als Nächstes sinnvoll ist. Wenn du unsicher bist: hier schauen!' },
+    { sel: '#player-card .money-list', place: 'right', text: 'Dein Geld. Jeder Kontinent hat eine eigene Währung – am besten kaufst du in der Lokalwährung. Wechseln kannst du an der Bank.' },
+    { sel: '#res-box', place: 'right', text: 'Sammle diese Ressourcen. Hast du alles, reist du zu einem freien Bunker und baust ihn. 💎 Rohstoffe sind Joker.' },
+    { sel: '#actions', place: 'above', text: 'Deine Aktionen. Die meisten kosten 1 Aktionspunkt. Die Tasten 1–9, Q und 0 funktionieren auch.' },
+    { sel: '#tb-ap', place: 'below', text: 'Deine Aktionspunkte. Sind sie aufgebraucht, beendest du deinen Zug (Taste 0).' },
+    { sel: '#defcon', place: 'below', text: 'DEFCON: Je weiter rechts, desto näher der Atomkrieg. Wann genau er ausbricht, weiss niemand!' },
+    { sel: '#right-panel', place: 'left', text: 'Der Markt: Wechselkurse, Preise, Gesetze und wer welchen Bunker besitzt.' },
+    { sel: 'globe', place: 'right', text: 'Zum Reisen klickst du einfach auf einen Ort der Weltkugel. Gelb gestrichelte Routen sind nah und billig. Viel Glück! ☢' },
+];
+
+function tourDone() {
+    try {
+        return localStorage.getItem(TOUR_KEY) === '1';
+    } catch (e) {
+        return true;
+    }
+}
+
+function markTourDone() {
+    try {
+        localStorage.setItem(TOUR_KEY, '1');
+    } catch (e) {
+        // ignore
+    }
+}
+
+function startTour() {
+    return new Promise(resolve => {
+        const steps = TOUR.filter(s => !s.sel || s.sel === 'globe' || document.querySelector(s.sel));
+        let i = 0;
+        const hole = $('tour-hole');
+        const bubble = $('tour-bubble');
+        $('tour').classList.remove('hidden');
+
+        function show() {
+            const step = steps[i];
+            let r;
+            if (step.sel === 'globe') {
+                const s = Math.min(window.innerWidth, window.innerHeight) * 0.55;
+                r = { left: window.innerWidth / 2 - s / 2, top: window.innerHeight / 2 - s / 2, width: s, height: s };
+            } else if (step.sel) {
+                const b = document.querySelector(step.sel).getBoundingClientRect();
+                r = { left: b.left - 8, top: b.top - 8, width: b.width + 16, height: b.height + 16 };
+            } else {
+                r = { left: window.innerWidth / 2, top: window.innerHeight / 2 - 60, width: 0, height: 0 };
+            }
+            Object.assign(hole.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+            hole.classList.toggle('round', step.sel === 'globe');
+            $('tour-step').textContent = `Schritt ${i + 1} von ${steps.length}`;
+            $('tour-text').textContent = step.text;
+            $('tour-next').textContent = i === steps.length - 1 ? 'Los geht\'s!' : 'Weiter';
+
+            const bw = bubble.offsetWidth || 320;
+            const bh = bubble.offsetHeight || 140;
+            const gap = 14;
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const pos = {
+                center: [cx - bw / 2, cy - bh / 2],
+                right: [r.left + r.width + gap, cy - bh / 2],
+                left: [r.left - bw - gap, cy - bh / 2],
+                below: [cx - bw / 2, r.top + r.height + gap],
+                above: [cx - bw / 2, r.top - bh - gap],
+            }[step.place];
+            bubble.style.left = `${Math.max(10, Math.min(window.innerWidth - bw - 10, pos[0]))}px`;
+            bubble.style.top = `${Math.max(10, Math.min(window.innerHeight - bh - 10, pos[1]))}px`;
+            Sound.play('hover');
+        }
+
+        function finish() {
+            $('tour').classList.add('hidden');
+            markTourDone();
+            setContinue(null);
+            resolve();
+        }
+
+        function next() {
+            i++;
+            if (i >= steps.length) finish();
+            else show();
+        }
+
+        $('tour-next').onclick = next;
+        $('tour-skip').onclick = finish;
+        setContinue(next);
+        show();
+        requestAnimationFrame(show);
+    });
+}
+
+// ===== HALL OF FAME =====
+
+function renderHall() {
+    const hall = loadHall();
+    const box = $('hall');
+    box.classList.toggle('hidden', !hall.length);
+    if (!hall.length) return;
+    box.innerHTML = `<div class="hall-title">🏆 Ruhmeshalle – die reichsten Überlebenden</div>` + hall.slice(0, 5).map((h, i) => {
+        const c = CHARACTERS[h.char];
+        return `<div class="hall-row"><span class="hall-rank">${i + 1}</span><span>${c ? c.icon : ''} ${esc(h.name)}${h.bot ? ' 🤖' : ''}</span><span class="hall-meta">${fmt(h.wealth)} € · ${h.players} Spieler · ${esc(h.date)}</span></div>`;
+    }).join('');
+}
+
+function cycleQuality() {
+    const order = ['auto', 'high', 'low'];
+    const next = order[(order.indexOf(qualitySetting()) + 1) % order.length];
+    setQualitySetting(next);
+    toast(`Grafik: ${{ auto: 'Automatisch', high: 'Hoch', low: 'Niedrig' }[next]}`, 'info');
 }
 
 // ===== OVERLAYS =====
@@ -719,12 +984,13 @@ function showEventCard(card, target) {
         if (card.kind === 'bad') setTimeout(() => Sound.play('alarm'), 400);
         const allBots = game.players.every(p => p.isBot);
         const done = () => {
+            if (!$('card-overlay').classList.contains('active')) return;
             $('card-overlay').classList.remove('active');
             $('card-ok').onclick = null;
-            showEventCard.pending = null;
+            setContinue(null);
             resolve();
         };
-        showEventCard.pending = done;
+        setContinue(done);
         $('card-ok').onclick = done;
         if (allBots) setTimeout(done, 3500);
     });
@@ -770,11 +1036,11 @@ function showHandover(p) {
         $('handover').classList.add('active');
         $('handover-ok').onclick = () => {
             $('handover').classList.remove('active');
-            showHandover.pending = null;
+            setContinue(null);
             Sound.play('click');
             resolve();
         };
-        showHandover.pending = $('handover-ok').onclick;
+        setContinue($('handover-ok').onclick);
     });
 }
 
@@ -788,6 +1054,7 @@ const AWARDS = [
     { icon: '✈️', title: 'Vielflieger', desc: 'Meiste Reisen', val: p => p.stats.travelled },
     { icon: '🕶️', title: 'Pate der Unterwelt', desc: 'Meiste Schmuggelgeschäfte', val: p => p.stats.smuggled },
     { icon: '🎰', title: 'Zocker', desc: 'Meiste Krypto-Geschäfte', val: p => p.stats.crypto },
+    { icon: '🤓', title: 'Streber', desc: 'Meiste richtige Quizantworten', val: p => p.stats.quizRight || 0 },
     { icon: '💳', title: 'Schuldenkönig', desc: 'Meiste Zinsen bezahlt', val: p => p.stats.interest, money: true },
     { icon: '⚖️', title: 'Vertragsbrecher', desc: 'Meiste Vertragsbrüche', val: p => p.stats.breaches },
     { icon: '🏦', title: 'Liebling der Bank', desc: 'Meiste Gebühren bezahlt', val: p => p.stats.fees, money: true },
@@ -922,6 +1189,9 @@ function showEndScreen(fates) {
             <div class="r-badge">${f.alive ? '🛖' : f.seized ? '🏦' : '☠️'}</div></div>`;
     }).join('');
     renderAwards();
+    if (game.hallEntries && game.hallEntries.length) {
+        $('end-awards').insertAdjacentHTML('afterbegin', `<div class="hall-new">🏆 Neu in der Ruhmeshalle: ${game.hallEntries.map(h => esc(h.name)).join(', ')}</div>`);
+    }
     renderWealthChart();
     $('end-lessons').innerHTML = game.lessons.length
         ? `<h3 class="end-h">📚 Was ihr gelernt habt</h3><ul>${game.lessons.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '';
@@ -1047,11 +1317,22 @@ function initUI() {
     $('btn-help').addEventListener('click', openHelp);
     $('btn-mute').addEventListener('click', () => { Sound.toggleMute(); render(); });
     $('btn-speed').addEventListener('click', cycleSpeed);
+    $('btn-quality').addEventListener('click', cycleQuality);
+    $('seg-quality').querySelectorAll('button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.quality === qualitySetting());
+        btn.addEventListener('click', () => {
+            setQualitySetting(btn.dataset.quality);
+            $('seg-quality').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+            Sound.play('click');
+        });
+    });
+    renderHall();
 
     const handlers = {
         travel: openTravel,
         market: openMarket,
         work: () => { const p = human(); if (p) afterAction(actWork(p)); },
+        study: () => { const p = human(); if (p) afterAction(actStudy(p)); },
         bank: openBank,
         crypto: openCrypto,
         eat: () => { const p = human(); if (p) afterAction(actEat(p)); },
@@ -1065,17 +1346,18 @@ function initUI() {
     document.addEventListener('keydown', e => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.metaKey || e.ctrlKey) return;
         if (e.key === 'Escape') return closeModal();
+        if (e.key === 'Enter' && continueFn) {
+            e.preventDefault();
+            return continueFn();
+        }
+        if (answerQuiz.fn && ['1', '2', '3', '4'].includes(e.key)) return answerQuiz(Number(e.key) - 1);
         if (e.key === 'm' || e.key === 'M') {
             Sound.toggleMute();
             if (game) render();
             return;
         }
-        if (e.key === 'Enter') {
-            if ($('card-overlay').classList.contains('active') && showEventCard.pending) return showEventCard.pending();
-            if ($('handover').classList.contains('active') && showHandover.pending) return showHandover.pending();
-        }
-        if (!game || game.over || modalOpen()) return;
-        const btn = document.querySelector(`#actions .act[data-key="${e.key}"]`);
+        if (!game || game.over || modalOpen() || !$('tour').classList.contains('hidden')) return;
+        const btn = document.querySelector(`#actions .act[data-key="${e.key.toLowerCase()}"]`);
         if (btn && !btn.disabled) {
             e.preventDefault();
             btn.click();

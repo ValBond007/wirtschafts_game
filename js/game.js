@@ -83,7 +83,18 @@ function purchaseQuote(p, locId, qty) {
 
 function foreignMarkup() {
     if (game.roundMods.freeTrade) return 1;
-    return game.roundMods.foreignMarkup || CONFIG.foreignMarkup;
+    if (game.roundMods.foreignMarkup) return game.roundMods.foreignMarkup;
+    return game.laws.freeTrade ? 1.1 : CONFIG.foreignMarkup;
+}
+
+function interestFor(p) {
+    let rate = game.interest * (has(p, 'bankerin') ? 0.5 : 1);
+    if (game.laws.rateCap) rate = Math.min(rate, 0.06);
+    return rate;
+}
+
+function loanLimitEUR() {
+    return game.laws.rateCap ? CONFIG.loanAmountEUR : CONFIG.seizureDebtEUR;
 }
 
 function travelCostEUR(p, to) {
@@ -105,6 +116,7 @@ function has(p, charId) {
 function reqFor(p) {
     const req = { ...CONFIG.bunkerRequirements };
     if (has(p, 'ingenieurin')) req.tech = Math.max(0, req.tech - 1);
+    if (game.laws.shelter) req.energy = Math.max(0, req.energy - 1);
     return req;
 }
 
@@ -117,7 +129,8 @@ function stepsOfBunker(b) {
 }
 
 function feeFor(p) {
-    return game.roundMods.freeTrade || has(p, 'bankerin') ? 0 : CONFIG.exchangeFee;
+    if (game.roundMods.freeTrade || has(p, 'bankerin')) return 0;
+    return game.laws.freeTrade ? 0.01 : CONFIG.exchangeFee;
 }
 
 function maxFoodBoosts(p) {
@@ -193,6 +206,9 @@ function newGame(setup, length, speed) {
         lessons: [],
         recentCards: [],
         nextCard: null,
+        laws: {},
+        votesDone: [],
+        quizUsed: [],
         wealthHistory: [],
         priceHistory: Object.fromEntries(CONTINENT_IDS.map(id => [id, [1]])),
         speed: AI_SPEEDS[speed] ? speed : 'normal',
@@ -230,7 +246,7 @@ function newGame(setup, length, speed) {
             insurance: 0,
             record: 0,
             attackedThisTurn: false,
-            stats: { fees: 0, interest: 0, bought: 0, stolen: 0, won: 0, lost: 0, worked: 0, smuggled: 0, caught: 0, crypto: 0, breaches: 0, travelled: 0 },
+            stats: { fees: 0, interest: 0, bought: 0, stolen: 0, won: 0, lost: 0, worked: 0, smuggled: 0, caught: 0, crypto: 0, breaches: 0, travelled: 0, quiz: 0, quizRight: 0 },
         };
     });
     game.nextCard = pickCard();
@@ -247,9 +263,11 @@ function prepareScene() {
     Sound.startDrone();
     Sound.startMusic();
     applySpeed();
+    applyQuality(true);
     Globe.setIdleSpin(false);
     Globe.setPlayers(game.players);
     Globe.setAvailability(BUNKER_ORDER.filter(id => game.bunkers[id].available));
+    Globe.setDayBase(LOCATIONS[game.players[0].home].lon);
     Globe.setDay(game.round, true);
     refreshBunkers();
     showHUD();
@@ -295,9 +313,81 @@ function clearSave() {
     }
 }
 
+// ===== GRAPHICS QUALITY =====
+
+const QUALITY_KEY = 'bunker-quality';
+
+function qualitySetting() {
+    try {
+        return localStorage.getItem(QUALITY_KEY) || 'auto';
+    } catch (e) {
+        return 'auto';
+    }
+}
+
+function setQualitySetting(q) {
+    try {
+        localStorage.setItem(QUALITY_KEY, q);
+    } catch (e) {
+        // ignore
+    }
+    applyQuality(false);
+}
+
+function applyQuality(checkLater) {
+    const q = qualitySetting();
+    Globe.setQuality(q === 'low' ? 'low' : 'high');
+    if (q === 'auto' && checkLater) {
+        setTimeout(() => {
+            if (qualitySetting() === 'auto' && Globe.getFps() < 24) {
+                Globe.setQuality('low');
+                toast('Grafik automatisch reduziert, damit das Spiel flüssig läuft.', 'info');
+            }
+        }, 6000);
+    }
+}
+
+// ===== HALL OF FAME =====
+
+const HALL_KEY = 'bunker-hall-of-fame';
+
+function loadHall() {
+    try {
+        return JSON.parse(localStorage.getItem(HALL_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function addToHall(fates) {
+    const entries = fates.filter(f => f.alive).map(f => ({
+        name: f.p.name,
+        char: f.p.char,
+        bot: f.p.isBot,
+        wealth: Math.round(wealthEUR(f.p)),
+        players: game.players.length,
+        date: new Date().toLocaleDateString('de-CH'),
+    }));
+    if (!entries.length) return [];
+    const hall = loadHall().concat(entries).sort((a, b) => b.wealth - a.wealth).slice(0, 8);
+    try {
+        localStorage.setItem(HALL_KEY, JSON.stringify(hall));
+    } catch (e) {
+        // ignore
+    }
+    return entries.filter(e => hall.includes(e));
+}
+
 async function resumeGame(saved) {
     game = saved;
     game.busy = false;
+    game.laws = game.laws || {};
+    game.votesDone = game.votesDone || [];
+    game.quizUsed = game.quizUsed || [];
+    game.players.forEach(p => {
+        p.stats.quiz = p.stats.quiz || 0;
+        p.stats.quizRight = p.stats.quizRight || 0;
+    });
     prepareScene();
     game.crates.forEach(c => Globe.addCrate(c));
     updateDefcon();
@@ -330,6 +420,7 @@ async function startRound() {
         render();
         await showEventCard(card, target);
         if (card.fx) await card.fx(game, target);
+        if (game.round % CONFIG.referendumEvery === 0) await runReferendum();
     }
     pushHistory();
     updateDefcon();
@@ -345,6 +436,7 @@ async function startTurn() {
     const p = cp();
     p.foodBoosts = 0;
     p.attackedThisTurn = false;
+    p.studiedThisTurn = false;
     if (p.cryptoLock > 0) p.cryptoLock--;
     if (p.insurance > 0) p.insurance--;
 
@@ -366,6 +458,75 @@ async function startTurn() {
     if (game.players.filter(x => !x.isBot).length > 1) await showHandover(p);
     await collectCrates(p);
     render();
+    if (!tourDone()) await startTour();
+}
+
+// ===== DIRECT DEMOCRACY =====
+
+async function runReferendum() {
+    const pool = PROPOSALS.filter(x => !game.votesDone.includes(x.id));
+    if (!pool.length) return;
+    const prop = rand(pool);
+    game.votesDone.push(prop.id);
+    Sound.play('alarm');
+
+    const votes = {};
+    game.players.filter(p => p.isBot).forEach(p => {
+        const selfish = prop.botVote(game, p);
+        votes[p.id] = Math.random() < 0.85 ? selfish : !selfish;
+    });
+    const humans = game.players.filter(p => !p.isBot);
+    if (humans.length) Object.assign(votes, await askVotes(prop, humans));
+
+    const yes = game.players.filter(p => votes[p.id]).length;
+    const accepted = yes > game.players.length - yes;
+    const extra = accepted ? prop.apply(game) : null;
+    if (!game.lessons.includes(prop.lesson)) game.lessons.push(prop.lesson);
+    log(`🗳️ ${prop.title}: ${accepted ? 'ANGENOMMEN' : 'ABGELEHNT'} (${yes} Ja : ${game.players.length - yes} Nein)`, accepted ? 'good' : 'bad');
+    if (extra) log(extra, 'info');
+    news(`Abstimmung: «${prop.title}» ${accepted ? 'angenommen' : 'abgelehnt'}!`);
+    refreshBunkers();
+    render();
+    await showVoteResult(prop, votes, accepted, extra);
+    render();
+}
+
+// ===== QUIZ (WEITERBILDUNG) =====
+
+function pickQuestion() {
+    let pool = QUIZ.map((q, i) => i).filter(i => !game.quizUsed.includes(i));
+    if (!pool.length) {
+        game.quizUsed = [];
+        pool = QUIZ.map((q, i) => i);
+    }
+    const i = rand(pool);
+    game.quizUsed.push(i);
+    return QUIZ[i];
+}
+
+async function actStudy(p) {
+    if (!canAct(p)) return false;
+    if (p.studiedThisTurn) return fail(p, 'Nur eine Weiterbildung pro Zug.');
+    spend(p);
+    p.studiedThisTurn = true;
+    p.stats.quiz++;
+    const q = pickQuestion();
+    if (!p.isBot) game.busy = true;
+    const correct = p.isBot ? Math.random() < 0.55 : await askQuiz(p, q);
+    game.busy = p.isBot;
+    if (correct) {
+        p.stats.quizRight++;
+        const { c, amount } = payLocal(game, p, CONFIG.studyEUR);
+        Sound.play('win');
+        pop(p, `🎓 +${fmt(amount)} ${CURRENCIES[c].symbol}`, '#4ade80');
+        log(`🎓 ${p.name} besteht die Weiterbildung und verdient ${fmt(amount)} ${CURRENCIES[c].name}.`, 'good');
+    } else {
+        Sound.play('lose');
+        pop(p, '📚 durchgefallen', '#f87171');
+        log(`📚 ${p.name} fällt bei der Weiterbildung durch – kein Lohn.`, 'bad');
+    }
+    render();
+    return true;
 }
 
 function endTurn() {
@@ -411,12 +572,12 @@ function updateEconomy() {
 function applyInterestAndIncome() {
     for (const p of game.players) {
         if (p.debt > 0) {
-            const add = p.debt * game.interest * (has(p, 'bankerin') ? 0.5 : 1);
+            const add = p.debt * interestFor(p);
             p.debt += add;
             p.stats.interest += add;
             if (p.debt >= CONFIG.seizureDebtEUR) seize(p);
         }
-        payLocal(game, p, CONFIG.incomeEUR * (has(p, 'oekonomin') ? 1.5 : 1));
+        payLocal(game, p, CONFIG.incomeEUR * (has(p, 'oekonomin') ? 1.5 : 1) * (game.laws.basicIncome ? 2 : 1));
     }
     log(`Alle erhalten ${CONFIG.incomeEUR} EUR Einkommen (in lokaler Währung).`);
 }
@@ -669,6 +830,8 @@ function actWork(p) {
 function wageEUR(p) {
     let mult = game.roundMods.doubleWage === p.location ? 2 : 1;
     mult *= game.roundMods.wageMult || 1;
+    if (game.laws.minWage) mult *= 1.4;
+    if (game.laws.freeTrade) mult *= 0.85;
     return CONFIG.workEUR * mult;
 }
 
@@ -710,14 +873,16 @@ function actLoan(p) {
     if (!canAct(p)) return false;
     const blocked = bankBlocked(p);
     if (blocked) return fail(p, blocked);
-    if (p.debt + CONFIG.loanAmountEUR > CONFIG.seizureDebtEUR) return fail(p, 'Die Bank gibt dir keinen Kredit mehr (Kreditlimit).');
+    if (p.debt + CONFIG.loanAmountEUR > loanLimitEUR()) {
+        return fail(p, game.laws.rateCap ? 'Zinsdeckel: Die Bank vergibt nur noch 400 € Kredit pro Person.' : 'Die Bank gibt dir keinen Kredit mehr (Kreditlimit).');
+    }
     const { c, amount } = payLocal(game, p, CONFIG.loanAmountEUR);
     p.debt += CONFIG.loanAmountEUR;
     spend(p);
     Sound.play('cash');
     pop(p, `💳 +${fmt(amount)} ${CURRENCIES[c].symbol}`, '#fbbf24');
     toast(`💳 Kredit: +${fmt(amount)} ${CURRENCIES[c].name}`, 'info');
-    log(`💳 ${p.name} nimmt einen Kredit über ${CONFIG.loanAmountEUR} EUR auf (${Math.round(game.interest * 100)}% Zins pro Runde).`, 'info');
+    log(`💳 ${p.name} nimmt einen Kredit über ${CONFIG.loanAmountEUR} EUR auf (${Math.round(interestFor(p) * 100)}% Zins pro Runde).`, 'info');
     return true;
 }
 
@@ -755,6 +920,7 @@ function actInsure(p) {
 
 function actCrypto(p, mode, coins) {
     if (!canAct(p)) return false;
+    if (game.laws.cryptoBan) return fail(p, 'BunkerCoin wurde per Volksabstimmung verboten.');
     const blocked = bankBlocked(p);
     if (blocked) return fail(p, blocked);
     coins = Math.floor(coins);
@@ -1109,6 +1275,11 @@ async function endGame() {
     Sound.stopDrone();
     await Globe.apocalypse(protectedIds);
     Globe.nuclearWinter();
+    if (protectedIds.length) {
+        Globe.focus(protectedIds[0], 10);
+        await sleep(2800);
+    }
+    game.hallEntries = addToHall(fates);
     await sleep(800);
     Sound.play('explosion', true);
     $('flash').className = 'white-out';

@@ -19,13 +19,17 @@ const Globe = (() => {
     let hovered = null;
 
     const cam = { lat: 25, lon: 10, dist: 17, tLat: 25, tLon: 10, tDist: 17 };
-    const sun = { angle: 0.6, target: 0.6 };
+    const sun = { angle: 0.6, target: 0.6, base: 0.6 };
+    let nightBase = 0.38;
     const world = { cityLights: 1, cityTarget: 1, winter: 0, winterTarget: 0 };
     let idleSpin = true;
     let shakeAmount = 0;
     let activePawnId = null;
     let travelSpeed = 1;
     let highlight = { current: null, near: [] };
+    let cityPoints = null;
+    let quality = 'high';
+    const fpsMeter = { frames: 0, since: 0, fps: 60 };
 
     // ===== MATH HELPERS =====
 
@@ -497,7 +501,8 @@ const Globe = (() => {
             depthWrite: false,
             blending: THREE.AdditiveBlending,
         });
-        globeGroup.add(new THREE.Points(geo, cityMat));
+        cityPoints = new THREE.Points(geo, cityMat);
+        globeGroup.add(cityPoints);
     }
 
     function buildClouds() {
@@ -728,6 +733,12 @@ const Globe = (() => {
         requestAnimationFrame(animate);
         const dt = Math.min(clock.getDelta(), 0.05);
         const t = clock.elapsedTime;
+        fpsMeter.frames++;
+        if (t - fpsMeter.since >= 1) {
+            fpsMeter.fps = fpsMeter.frames / (t - fpsMeter.since);
+            fpsMeter.frames = 0;
+            fpsMeter.since = t;
+        }
 
         if (idleSpin) cam.tLon += dt * 6;
         const dLon = ((cam.tLon - cam.lon + 540) % 360) - 180;
@@ -750,7 +761,7 @@ const Globe = (() => {
         world.winter += (world.winterTarget - world.winter) * Math.min(1, dt * 0.4);
         cityMat.uniforms.time.value = t;
         cityMat.uniforms.intensity.value = world.cityLights;
-        landMat.uniforms.nightDim.value = 0.32 - world.winter * 0.2;
+        landMat.uniforms.nightDim.value = nightBase - world.winter * 0.2;
         clouds.rotation.y += dt * 0.012;
         cloudMat.opacity = 0.42 + world.winter * 0.4;
         if (world.winter > 0.01) cloudMat.color.setRGB(1 - world.winter * 0.62, 1 - world.winter * 0.68, 1 - world.winter * 0.7);
@@ -856,8 +867,25 @@ const Globe = (() => {
         travelSpeed = f;
     }
 
+    function setQuality(q) {
+        quality = q === 'low' ? 'low' : 'high';
+        const high = quality === 'high';
+        renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 2) : 1);
+        clouds.visible = high;
+        cityPoints.visible = high;
+        moon.visible = high;
+        satellites.forEach(s => { s.sat.visible = high; });
+        nightBase = high ? 0.38 : 0.55;
+        resize();
+    }
+
+    // Aligns round 1's sun with a longitude so the first player starts in daylight.
+    function setDayBase(lonDeg) {
+        sun.base = -lonDeg * DEG + 0.35;
+    }
+
     function setDay(round, instant = false) {
-        sun.target = 0.6 + round * 0.9;
+        sun.target = sun.base + Math.max(0, round - 1) * 0.9;
         if (instant) {
             sun.angle = sun.target;
             updateSun();
@@ -1355,7 +1383,7 @@ const Globe = (() => {
     }
 
     return {
-        init, focus, setIdleSpin, setTravelSpeed, setDay, setHighlights, setAvailability, setBunkerState,
+        init, focus, setIdleSpin, setTravelSpeed, setQuality, getFps: () => fpsMeter.fps, getQuality: () => quality, setDay, setDayBase, setHighlights, setAvailability, setBunkerState,
         setPlayers, layoutPawns, setActivePawn, travel, ring, popText, sparks, explosion, missileBetween,
         apocalypse, nuclearWinter, shake, setThreat, addCrate, removeCrate, resetScorch, scorch,
         normalOf: id => markers[id].normal.clone(),

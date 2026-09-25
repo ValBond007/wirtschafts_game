@@ -23,6 +23,156 @@ const CONFIG = {
     foreignMarkup: 1.3,
     maxFoodBoostsPerTurn: 2,
     botDelay: 750,
+    studyEUR: 240,
+    quizSeconds: 20,
+    referendumEvery: 3,
+};
+
+// Quiz for the "Weiterbildung" action. `a` is the index of the correct answer.
+const QUIZ = [
+    { q: 'Was bedeutet Inflation?', o: ['Die Preise steigen allgemein, Geld verliert an Kaufkraft', 'Die Preise sinken allgemein', 'Die Arbeitslosigkeit steigt', 'Der Staat macht Schulden'], a: 0, e: 'Inflation = anhaltender Anstieg des allgemeinen Preisniveaus. Mit dem gleichen Geld kann man weniger kaufen.' },
+    { q: 'Das Angebot eines Gutes sinkt, die Nachfrage bleibt gleich. Was passiert mit dem Preis?', o: ['Er sinkt', 'Er steigt', 'Er bleibt gleich', 'Das Gut wird verboten'], a: 1, e: 'Weniger Angebot bei gleicher Nachfrage macht das Gut knapper – der Preis steigt.' },
+    { q: 'Du legst 1000 € zu 10% Zins an. Wie viel hast du nach 2 Jahren mit Zinseszins?', o: ['1200 €', '1100 €', '1210 €', '1020 €'], a: 2, e: '1000 × 1.1 = 1100 nach einem Jahr, 1100 × 1.1 = 1210 nach zwei Jahren. Auch die Zinsen werden verzinst.' },
+    { q: 'Was sind Opportunitätskosten?', o: ['Die Kosten für Gelegenheitsjobs', 'Der entgangene Nutzen der besten nicht gewählten Alternative', 'Die Steuern auf Gewinne', 'Gebühren beim Geldwechsel'], a: 1, e: 'Wer sich für A entscheidet, verzichtet auf B. Der Nutzen von B sind die Opportunitätskosten – z. B. arbeiten statt einkaufen.' },
+    { q: 'Wie viele Unterschriften braucht eine eidgenössische Volksinitiative?', o: ['50 000', '100 000', '10 000', '1 Million'], a: 1, e: '100 000 gültige Unterschriften innert 18 Monaten. Ein fakultatives Referendum braucht 50 000 Unterschriften innert 100 Tagen.' },
+    { q: 'Wer bestimmt in der Schweiz die Geldpolitik (z. B. den Leitzins)?', o: ['Der Bundesrat', 'Die UBS', 'Die Schweizerische Nationalbank (SNB)', 'Das Parlament'], a: 2, e: 'Die SNB ist unabhängig. Ihr Hauptziel ist Preisstabilität – eine Teuerung von weniger als 2% pro Jahr.' },
+    { q: 'Der Franken wird gegenüber dem Euro stärker (Aufwertung). Was bedeutet das für Schweizer Exporteure?', o: ['Ihre Produkte werden im Ausland teurer', 'Ihre Produkte werden im Ausland billiger', 'Nichts', 'Sie zahlen weniger Steuern'], a: 0, e: 'Ausländische Kunden brauchen mehr Euro für dieselben Franken – Schweizer Exporte werden teurer und schwerer zu verkaufen.' },
+    { q: 'Wie kommt nach Obligationenrecht (OR) ein Vertrag zustande?', o: ['Nur mit Unterschrift beim Notar', 'Durch übereinstimmende gegenseitige Willensäusserung', 'Durch Bezahlung', 'Nur schriftlich'], a: 1, e: 'Art. 1 OR: Angebot und Annahme müssen übereinstimmen. Viele Verträge sind sogar mündlich gültig.' },
+    { q: 'Was ist eine Konventionalstrafe?', o: ['Eine Busse der Polizei', 'Eine im Vertrag vereinbarte Strafzahlung bei Vertragsverletzung', 'Eine Steuer auf Verträge', 'Eine Gefängnisstrafe'], a: 1, e: 'Die Parteien vereinbaren selbst, was bei Nichterfüllung zu zahlen ist (Art. 160 ff. OR) – wie beim Pakt im Spiel.' },
+    { q: 'Ab welchem Alter ist man in der Schweiz volljährig und voll handlungsfähig?', o: ['16', '18', '20', '21'], a: 1, e: 'Mit 18 Jahren ist man volljährig (Art. 14 ZGB) und kann selbständig Verträge abschliessen.' },
+    { q: 'Was macht ein Kartell?', o: ['Es vergibt Kredite', 'Unternehmen sprechen Preise oder Mengen ab und schalten so den Wettbewerb aus', 'Es kontrolliert Grenzen', 'Es versichert Firmen'], a: 1, e: 'Harte Kartelle sind nach dem Kartellgesetz verboten. In der Schweiz wacht die Wettbewerbskommission (WEKO) darüber.' },
+    { q: 'Bis zu welchem Betrag sind Bankguthaben in der Schweiz durch die Einlagensicherung geschützt?', o: ['10 000 CHF', '50 000 CHF', '100 000 CHF', 'unbegrenzt'], a: 2, e: 'Pro Kunde und Bank sind Guthaben bis 100 000 CHF geschützt, falls die Bank pleitegeht.' },
+    { q: 'Was ist ein Zoll?', o: ['Eine Abgabe auf eingeführte (importierte) Waren', 'Eine Masseinheit', 'Eine Art Kredit', 'Eine Versicherung'], a: 0, e: 'Zölle verteuern Importe. Das schützt heimische Produzenten, macht Waren für Konsumenten aber teurer.' },
+    { q: 'Was misst das Bruttoinlandprodukt (BIP)?', o: ['Das Vermögen aller Einwohner', 'Den Wert aller in einem Jahr im Inland hergestellten Waren und Dienstleistungen', 'Die Staatsschulden', 'Die Anzahl Unternehmen'], a: 1, e: 'Das BIP ist das wichtigste Mass für die wirtschaftliche Leistung eines Landes.' },
+    { q: 'Was passiert bei einer Betreibung, wenn der Schuldner nicht zahlt und keinen Rechtsvorschlag erhebt?', o: ['Nichts', 'Die Schuld verfällt', 'Es kann zur Pfändung seines Vermögens kommen', 'Er muss ins Gefängnis'], a: 2, e: 'Nach dem Zahlungsbefehl hat der Schuldner 10 Tage für einen Rechtsvorschlag. Sonst kann gepfändet werden (SchKG).' },
+    { q: 'Was bedeutet «Moral Hazard» bei Versicherungen?', o: ['Versicherte verhalten sich riskanter, weil der Schaden ja gedeckt ist', 'Versicherungen sind unmoralisch', 'Versicherungen dürfen keine Gewinne machen', 'Man muss jede Versicherung abschliessen'], a: 0, e: 'Wer versichert ist, passt oft weniger auf. Deshalb gibt es Selbstbehalte.' },
+    { q: 'Welche Aussage über Kryptowährungen wie Bitcoin stimmt?', o: ['Sie werden von der SNB herausgegeben', 'Ihr Wert ist garantiert', 'Sie funktionieren dezentral ohne Zentralbank und schwanken stark', 'Sie sind in der Schweiz verboten'], a: 2, e: 'Kryptowährungen basieren auf einer Blockchain. Es gibt keine Zentralbank, die den Wert stabilisiert – daher die hohe Volatilität.' },
+    { q: 'Was ist ein Termingeschäft?', o: ['Ein Geschäft mit Terminkalendern', 'Ein Vertrag, der heute abgeschlossen, aber erst später erfüllt wird', 'Ein Geschäft nur an Werktagen', 'Ein Kredit ohne Zins'], a: 1, e: 'Preis und Menge werden heute festgelegt, Lieferung und Zahlung erfolgen später. Man ist so lange gebunden – wie die Sperrfrist im Spiel.' },
+    { q: 'Was bedeutet «Diversifikation» bei Geldanlagen?', o: ['Alles in eine Aktie investieren', 'Das Risiko auf verschiedene Anlagen verteilen', 'Nur Bargeld halten', 'Schulden machen, um zu investieren'], a: 1, e: '«Nicht alle Eier in einen Korb legen»: Fällt eine Anlage, gleichen andere den Verlust aus.' },
+    { q: 'Was ist ein Monopol?', o: ['Viele Anbieter, ein Nachfrager', 'Ein einziger Anbieter beherrscht den Markt', 'Ein Brettspiel ohne Regeln', 'Ein staatlicher Kredit'], a: 1, e: 'Ohne Konkurrenz kann ein Monopolist höhere Preise verlangen. Deshalb gibt es Wettbewerbsrecht.' },
+    { q: 'Wie hoch ist der normale Mehrwertsteuersatz in der Schweiz (seit 2024)?', o: ['2.6%', '7.7%', '8.1%', '19%'], a: 2, e: 'Seit dem 1. Januar 2024 beträgt der Normalsatz 8.1% (reduzierter Satz 2.6% z. B. für Lebensmittel).' },
+    { q: 'Was schützt der Pflichtteil im Erbrecht?', o: ['Nahe Angehörige davor, komplett enterbt zu werden', 'Den Staat vor Steuerausfällen', 'Banken vor Verlusten', 'Mieter vor Kündigungen'], a: 0, e: 'Einen Teil des Erbes kann man seinen Nachkommen (und dem Ehepartner) nicht wegnehmen (ZGB).' },
+    { q: 'Was ist Deflation?', o: ['Ein allgemeiner Rückgang der Preise', 'Ein starker Preisanstieg', 'Ein Börsencrash', 'Eine Steuererhöhung'], a: 0, e: 'Klingt gut, ist aber gefährlich: Wer sinkende Preise erwartet, kauft später – die Wirtschaft bremst ab.' },
+    { q: 'Warum senkt eine Zentralbank die Leitzinsen?', o: ['Um die Wirtschaft anzukurbeln', 'Um die Inflation zu erhöhen, weil sie das mag', 'Um Banken zu bestrafen', 'Um den Franken zu verbieten'], a: 0, e: 'Tiefe Zinsen machen Kredite billig. Firmen investieren und Menschen konsumieren mehr.' },
+    { q: 'Was ist eine Sanktion (Embargo) im Völkerrecht?', o: ['Eine Belohnung für ein Land', 'Ein Verbot, mit einem Staat Handel zu treiben, um Druck auszuüben', 'Ein Freihandelsabkommen', 'Eine Währungsreform'], a: 1, e: 'Sanktionen sollen einen Staat zu einem bestimmten Verhalten bewegen, ohne militärische Gewalt.' },
+    { q: 'Schwarzmarkt: Warum sind die Preise dort meist höher?', o: ['Weil die Händler ein Strafrisiko tragen und das Angebot knapp ist', 'Weil dort Mehrwertsteuer anfällt', 'Weil der Staat die Preise festlegt', 'Sie sind immer tiefer'], a: 0, e: 'Das Risiko erwischt zu werden wird «eingepreist» – wie im Spiel beim Schmuggeln.' },
+    { q: 'Was versteht man unter dem «Sicherheitsdilemma»?', o: ['Alle rüsten auf, um sicher zu sein – und am Ende fühlt sich niemand sicherer', 'Ein Problem bei Tresoren', 'Ein Streit zwischen Versicherungen', 'Eine Regel im Strassenverkehr'], a: 0, e: 'Aufrüstung des einen wird vom anderen als Bedrohung wahrgenommen – ein Wettrüsten beginnt.' },
+    { q: 'Was bedeutet Arbeitsteilung?', o: ['Jeder stellt alles selbst her', 'Menschen oder Regionen spezialisieren sich und tauschen ihre Güter', 'Man teilt sich eine Stelle zu zweit', 'Der Staat verteilt die Arbeit'], a: 1, e: 'Spezialisierung steigert die Produktivität – wie im Spiel, wo jeder Kontinent eine andere Ressource herstellt.' },
+];
+
+// Direct-democracy proposals. `botVote` models self-interest; `apply` runs if accepted.
+const PROPOSALS = [
+    {
+        id: 'wealthtax', icon: '💰', title: 'Initiative «Reiche sollen zahlen»',
+        text: 'Wer mehr als 1500 € Bargeld besitzt, gibt 20% davon ab. Der Ertrag wird gleichmässig an alle verteilt.',
+        pro: 'Alle bekommen eine faire Chance auf einen Bunkerplatz.',
+        contra: 'Wer fleissig war, wird bestraft.',
+        lesson: 'Umverteilung: Wer profitiert, stimmt meist dafür. Eigeninteresse prägt Abstimmungen (Public Choice).',
+        botVote: (g, p) => fiatEUR(p) < 1500,
+        apply: g => {
+            let pot = 0;
+            g.players.forEach(p => {
+                if (fiatEUR(p) <= 1500) return;
+                for (const c of FIAT) {
+                    const take = Math.floor(p.money[c] * 0.2);
+                    p.money[c] -= take;
+                    pot += toEUR(c, take);
+                }
+            });
+            const share = Math.floor(pot / g.players.length);
+            g.players.forEach(p => { p.money.eur += share; });
+            return `Umverteilt: ${fmt(pot)} € – jeder erhält ${fmt(share)} €.`;
+        },
+    },
+    {
+        id: 'basicincome', icon: '🎁', title: 'Bedingungsloses Grundeinkommen',
+        text: 'Ab sofort erhalten alle das doppelte Einkommen pro Runde. Finanziert wird es mit frisch gedrucktem Geld: Alle Preise steigen sofort um 12%.',
+        pro: 'Mehr Geld für alle, ohne Bedingungen.',
+        contra: 'Mehr Geld ohne mehr Güter führt zu Inflation.',
+        lesson: 'Wird Geld gedruckt, ohne dass mehr produziert wird, steigen die Preise. Das zusätzliche Einkommen ist weniger wert.',
+        botVote: (g, p) => fiatEUR(p) < 900,
+        apply: g => {
+            g.laws.basicIncome = true;
+            for (const id of CONTINENT_IDS) g.priceIndex[id] *= 1.12;
+            g.cpi *= 1.12;
+        },
+    },
+    {
+        id: 'cryptoban', icon: '🚫', title: 'Kryptoverbot',
+        text: 'BunkerCoin wird verboten. Alle Coins werden zum halben Kurs in EUR umgetauscht, Krypto-Handel ist danach nicht mehr möglich.',
+        pro: 'Schützt vor Spekulation und Betrug.',
+        contra: 'Enteignet die Krypto-Besitzer.',
+        lesson: 'Regulierung kann Anleger schützen, greift aber auch in die Eigentumsfreiheit ein.',
+        botVote: (g, p) => p.money.crypto === 0,
+        apply: g => {
+            g.laws.cryptoBan = true;
+            g.players.forEach(p => {
+                p.money.eur += Math.floor(toEUR('crypto', p.money.crypto) * 0.5);
+                p.money.crypto = 0;
+            });
+        },
+    },
+    {
+        id: 'armsban', icon: '🕊️', title: 'Initiative «Stopp den Waffenexporten»',
+        text: 'Militärgüter dürfen nicht mehr frei gehandelt werden. Militär wird sofort 60% teurer.',
+        pro: 'Weniger Waffen, weniger Überfälle.',
+        contra: 'Wer schon Militär hat, ist im Vorteil.',
+        lesson: 'Gesetze können Märkte gezielt einschränken. Das verändert Preise und Machtverhältnisse.',
+        botVote: (g, p) => p.resources.military < 2,
+        apply: g => { g.priceIndex.nordamerika *= 1.6; },
+    },
+    {
+        id: 'shelter', icon: '🛖', title: 'Schutzraumpflicht',
+        text: 'Der Staat subventioniert Bunker: Ab sofort braucht jeder Bunker 1 Energie weniger. Finanziert durch eine Steuer von 100 € pro Person.',
+        pro: 'Schutz für die ganze Bevölkerung.',
+        contra: 'Alle zahlen, auch wer schon einen Bunker hat.',
+        lesson: 'Die Schweiz kennt tatsächlich eine Schutzraumpflicht: Für fast alle Einwohner gibt es einen Schutzplatz.',
+        botVote: (g, p) => !ownedBunker(p),
+        apply: g => {
+            g.laws.shelter = true;
+            g.players.forEach(p => { payEUR(p, Math.min(100, fiatEUR(p)), localCurrency(p)); });
+        },
+    },
+    {
+        id: 'ratecap', icon: '🧢', title: 'Zinsdeckel-Initiative',
+        text: 'Kredite dürfen höchstens 6% Zins pro Runde kosten. Dafür vergeben die Banken nur noch maximal 400 € Kredit pro Person.',
+        pro: 'Schützt Schuldner vor Wucherzinsen.',
+        contra: 'Weniger Kredite für alle (Kreditklemme).',
+        lesson: 'Ein Höchstzins schützt Schuldner, führt aber oft dazu, dass Banken weniger Kredite vergeben.',
+        botVote: (g, p) => p.debt > 0 || fiatEUR(p) < 500,
+        apply: g => { g.laws.rateCap = true; },
+    },
+    {
+        id: 'freetrade', icon: '🌍', title: 'Freihandelsabkommen',
+        text: 'Kaufen mit Fremdwährung kostet nur noch 10% Aufschlag, Geldwechsel nur 1% Gebühr. Aber: Die Löhne sinken um 15% (mehr Konkurrenz).',
+        pro: 'Billigerer Handel über Grenzen.',
+        contra: 'Druck auf die Löhne.',
+        lesson: 'Freihandel senkt Kosten für Konsumenten, setzt aber Arbeitnehmende einem stärkeren Wettbewerb aus.',
+        botVote: (g, p) => p.stats.travelled >= 3,
+        apply: g => { g.laws.freeTrade = true; },
+    },
+    {
+        id: 'minwage', icon: '💶', title: 'Mindestlohn-Initiative',
+        text: 'Arbeiten bringt ab sofort 40% mehr. Die Firmen geben die Kosten weiter: Alle Preise steigen um 8%.',
+        pro: 'Von Arbeit muss man leben können.',
+        contra: 'Höhere Löhne führen zu höheren Preisen.',
+        lesson: 'Höhere Lohnkosten werden oft über die Preise an die Konsumenten weitergegeben (Lohn-Preis-Spirale).',
+        botVote: (g, p) => p.stats.worked >= 3,
+        apply: g => {
+            g.laws.minWage = true;
+            for (const id of CONTINENT_IDS) g.priceIndex[id] *= 1.08;
+            g.cpi *= 1.08;
+        },
+    },
+];
+
+const LAW_LABELS = {
+    basicIncome: '🎁 Grundeinkommen',
+    cryptoBan: '🚫 Kryptoverbot',
+    shelter: '🛖 Schutzraumpflicht',
+    rateCap: '🧢 Zinsdeckel',
+    freeTrade: '🌍 Freihandel',
+    minWage: '💶 Mindestlohn',
 };
 
 const RESOURCES = {
