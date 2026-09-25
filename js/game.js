@@ -75,25 +75,75 @@ function purchaseQuote(p, locId, qty) {
     for (let i = 0; i < qty; i++) totalLocal += priceLocal(locId, i);
     const fromLocal = Math.min(p.money[c], totalLocal);
     const shortEUR = toEUR(c, totalLocal - fromLocal);
-    const markup = game.roundMods.freeTrade ? 1 : CONFIG.foreignMarkup;
+    const markup = foreignMarkup();
     const foreignEUR = shortEUR * markup;
     const otherEUR = FIAT.filter(x => x !== c).reduce((s, x) => s + toEUR(x, p.money[x]), 0);
-    return { c, totalLocal, fromLocal, foreignEUR, affordable: otherEUR + 0.01 >= foreignEUR, usesForeign: foreignEUR > 0 };
+    return { c, totalLocal, fromLocal, foreignEUR, markup, affordable: otherEUR + 0.01 >= foreignEUR, usesForeign: foreignEUR > 0 };
+}
+
+function foreignMarkup() {
+    if (game.roundMods.freeTrade) return 1;
+    return game.roundMods.foreignMarkup || CONFIG.foreignMarkup;
 }
 
 function travelCostEUR(p, to) {
     const near = ADJACENCY[p.location].includes(to);
     let cost = near ? CONFIG.travelNearEUR : CONFIG.travelFarEUR;
-    cost *= game.roundMods.travelMult || 1;
+    if (has(p, 'diplomat')) cost *= 0.85;
+    else cost *= game.roundMods.travelMult || 1;
     if (p.resources.tech > 0) cost *= 0.7;
     if (p.resources.energy > 0) cost *= 0.8;
     return Math.round(cost);
 }
 
+// ===== CHARACTER POWERS =====
+
+function has(p, charId) {
+    return p.char === charId;
+}
+
+function reqFor(p) {
+    const req = { ...CONFIG.bunkerRequirements };
+    if (has(p, 'ingenieurin')) req.tech = Math.max(0, req.tech - 1);
+    return req;
+}
+
+function stepsFor(p) {
+    return has(p, 'ingenieurin') ? 2 : CONFIG.bunkerBuildSteps;
+}
+
+function stepsOfBunker(b) {
+    return b.owner === null ? CONFIG.bunkerBuildSteps : stepsFor(game.players[b.owner]);
+}
+
+function feeFor(p) {
+    return game.roundMods.freeTrade || has(p, 'bankerin') ? 0 : CONFIG.exchangeFee;
+}
+
+function maxFoodBoosts(p) {
+    return has(p, 'bauer') ? 3 : CONFIG.maxFoodBoostsPerTurn;
+}
+
+function smuggleTerms(p) {
+    const pro = has(p, 'schmugglerin');
+    return {
+        markup: pro ? 1.5 : CONFIG.blackMarketMarkup,
+        chance: Math.min(0.9, (pro ? 0.1 : CONFIG.blackMarketCatchChance) + p.record * 0.1),
+    };
+}
+
+function combatBonus(p) {
+    return p.resources.military + (has(p, 'general') ? 1 : 0);
+}
+
+function pop(p, text, color) {
+    Globe.popText(p.location, text, color || p.color);
+}
+
 function bunkerNeeds(p) {
     const need = {};
     let missing = 0;
-    for (const [k, v] of Object.entries(CONFIG.bunkerRequirements)) {
+    for (const [k, v] of Object.entries(reqFor(p))) {
         need[k] = Math.max(0, v - p.resources[k]);
         missing += need[k];
     }
@@ -111,7 +161,7 @@ function ownedBunker(p) {
 
 // ===== SETUP =====
 
-function newGame(setup, length) {
+function newGame(setup, length, speed) {
     const range = { short: [8, 11], normal: [12, 16], long: [17, 22] }[length] || [12, 16];
     const rates = {};
     const history = {};
@@ -142,26 +192,37 @@ function newGame(setup, length) {
         pacts: [],
         lessons: [],
         recentCards: [],
+        nextCard: null,
+        wealthHistory: [],
+        priceHistory: Object.fromEntries(CONTINENT_IDS.map(id => [id, [1]])),
+        speed: AI_SPEEDS[speed] ? speed : 'normal',
         defcon: 5,
         busy: false,
         over: false,
         players: [],
     };
 
+    const freeChars = shuffle(CHARACTER_IDS.filter(id => !setup.some(s => s.char === id)));
     game.players = setup.map((s, i) => {
         const loc = starts[i % starts.length];
         const c = LOCATIONS[loc].currency;
         const money = { usd: 0, eur: 0, peso: 0, ara: 0, crypto: 0 };
         money[c] = Math.round(CONFIG.startMoneyEUR / rates[c]);
+        const char = CHARACTERS[s.char] ? s.char : freeChars.pop() || rand(CHARACTER_IDS);
+        const resources = { military: 0, food: 0, tech: 0, energy: 0, rare: 0 };
+        if (char === 'general') resources.military = 1;
+        if (char === 'bauer') resources.food = 2;
+        if (char === 'kryptobro') money.crypto = 2;
         return {
             id: i,
             name: s.name,
             isBot: s.isBot,
+            char,
             color: PLAYER_COLORS[i],
             location: loc,
             home: loc,
             money,
-            resources: { military: 0, food: 0, tech: 0, energy: 0, rare: 0 },
+            resources,
             ap: CONFIG.actionsPerTurn,
             foodBoosts: 0,
             cryptoLock: 0,
@@ -169,26 +230,80 @@ function newGame(setup, length) {
             insurance: 0,
             record: 0,
             attackedThisTurn: false,
-            stats: { fees: 0, interest: 0, bought: 0, stolen: 0, won: 0, lost: 0, worked: 0, smuggled: 0, caught: 0 },
+            stats: { fees: 0, interest: 0, bought: 0, stolen: 0, won: 0, lost: 0, worked: 0, smuggled: 0, caught: 0, crypto: 0, breaches: 0, travelled: 0 },
         };
     });
+    game.nextCard = pickCard();
 }
 
-async function startGame(setup, length) {
-    newGame(setup, length);
+function applySpeed() {
+    const s = AI_SPEEDS[game.speed] || AI_SPEEDS.normal;
+    CONFIG.botDelay = s.delay;
+    Globe.setTravelSpeed(s.travel);
+}
+
+function prepareScene() {
     Sound.init();
     Sound.startDrone();
+    Sound.startMusic();
+    applySpeed();
     Globe.setIdleSpin(false);
     Globe.setPlayers(game.players);
     Globe.setAvailability(BUNKER_ORDER.filter(id => game.bunkers[id].available));
+    Globe.setDay(game.round, true);
     refreshBunkers();
+    showHUD();
+}
+
+async function startGame(setup, length, speed) {
+    newGame(setup, length, speed);
+    prepareScene();
     const nb = BUNKER_ORDER.filter(id => game.bunkers[id].available).length;
     log(`${game.players.length} Spieler kämpfen um ${nb} ${nb > 1 ? 'Bunkerplätze' : 'Bunkerplatz'}.`, 'info');
     news(`EILMELDUNG: Nur ${nb} Bunker für ${game.players.length} Menschen verfügbar!`);
     NEWS_FLAVOR.slice().sort(() => Math.random() - 0.5).slice(0, 4).forEach(news);
     for (let i = 0; i < 2; i++) spawnCrate(game);
-    showHUD();
     await startRound();
+}
+
+// ===== SAVE / LOAD =====
+
+const SAVE_KEY = 'bunker-savegame-v2';
+
+function saveGame() {
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({ ...game, busy: false }));
+    } catch (e) {
+        // Saving is a convenience; private mode or full storage just disables it.
+    }
+}
+
+function loadSave() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+        return saved && saved.players && !saved.over ? saved : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function clearSave() {
+    try {
+        localStorage.removeItem(SAVE_KEY);
+    } catch (e) {
+        // ignore
+    }
+}
+
+async function resumeGame(saved) {
+    game = saved;
+    game.busy = false;
+    prepareScene();
+    game.crates.forEach(c => Globe.addCrate(c));
+    updateDefcon();
+    log(`Spielstand geladen – Runde ${game.round}.`, 'info');
+    news('Die Weltuntergangsuhr tickt weiter...');
+    await startTurn();
 }
 
 // ===== ROUND / TURN FLOW =====
@@ -199,13 +314,14 @@ async function startRound() {
 
     game.roundMods = {};
     log(`RUNDE ${game.round}`, 'round');
+    Globe.setDay(game.round);
+    await showRoundBanner(game.round);
 
     if (game.round > 1) {
         updateEconomy();
         applyInterestAndIncome();
         if (Math.random() < 0.4) spawnCrate(game);
-        const card = drawCard();
-        const target = card.pick ? card.pick(game) : null;
+        const { card, target } = drawCard();
         const extra = card.apply(game, target);
         if (extra) log(extra, 'info');
         if (!game.lessons.includes(card.lesson)) game.lessons.push(card.lesson);
@@ -213,6 +329,7 @@ async function startRound() {
         news(`${card.title.toUpperCase()}: ${card.text(target)}`);
         render();
         await showEventCard(card, target);
+        if (card.fx) await card.fx(game, target);
     }
     pushHistory();
     updateDefcon();
@@ -224,6 +341,7 @@ async function startRound() {
 }
 
 async function startTurn() {
+    saveGame();
     const p = cp();
     p.foodBoosts = 0;
     p.attackedThisTurn = false;
@@ -293,12 +411,12 @@ function updateEconomy() {
 function applyInterestAndIncome() {
     for (const p of game.players) {
         if (p.debt > 0) {
-            const add = p.debt * game.interest;
+            const add = p.debt * game.interest * (has(p, 'bankerin') ? 0.5 : 1);
             p.debt += add;
             p.stats.interest += add;
             if (p.debt >= CONFIG.seizureDebtEUR) seize(p);
         }
-        payLocal(game, p, CONFIG.incomeEUR);
+        payLocal(game, p, CONFIG.incomeEUR * (has(p, 'oekonomin') ? 1.5 : 1));
     }
     log(`Alle erhalten ${CONFIG.incomeEUR} EUR Einkommen (in lokaler Währung).`);
 }
@@ -322,14 +440,37 @@ function pushHistory() {
         game.history[c].push(game.rates[c]);
         if (game.history[c].length > 24) game.history[c].shift();
     }
+    for (const id of CONTINENT_IDS) {
+        game.priceHistory[id].push(game.priceIndex[id]);
+        if (game.priceHistory[id].length > 24) game.priceHistory[id].shift();
+    }
+    recordWealth();
+}
+
+function recordWealth() {
+    game.wealthHistory.push({ round: game.round, values: game.players.map(p => Math.round(wealthEUR(p))) });
+}
+
+// Cards are drawn one ahead so the Ökonomin can see the forecast.
+function pickCard() {
+    const pool = EVENT_CARDS.map((c, i) => i).filter(i => !game.recentCards.includes(EVENT_CARDS[i].title));
+    const i = rand(pool);
+    const card = EVENT_CARDS[i];
+    game.recentCards.push(card.title);
+    if (game.recentCards.length > 6) game.recentCards.shift();
+    return { i, target: card.pick ? card.pick(game) : null };
 }
 
 function drawCard() {
-    const pool = EVENT_CARDS.filter(c => !game.recentCards.includes(c.title));
-    const card = rand(pool);
-    game.recentCards.push(card.title);
-    if (game.recentCards.length > 5) game.recentCards.shift();
-    return card;
+    const next = game.nextCard || pickCard();
+    game.nextCard = pickCard();
+    return { card: EVENT_CARDS[next.i], target: next.target };
+}
+
+function forecast() {
+    if (!game.nextCard) return null;
+    const card = EVENT_CARDS[game.nextCard.i];
+    return { card, target: game.nextCard.target };
 }
 
 function updateDefcon() {
@@ -381,6 +522,7 @@ async function collectCrates(p) {
         Globe.removeCrate(c.id, p.color);
     }
     Sound.play('pickup');
+    pop(p, `+${here.length} 💎`, '#e879f9');
     toast(`${p.name}: +${here.length} 💎 Rohstoff${here.length > 1 ? 'e' : ''}!`, 'good');
     log(`${p.name} sammelt ${here.length} Rohstoff-Fund${here.length > 1 ? 'e' : ''} ein (Joker für den Bunker).`, 'good');
     render();
@@ -419,6 +561,7 @@ async function actTravel(p, to) {
 
     const from = p.location;
     p.location = to;
+    p.stats.travelled++;
     spend(p);
     log(`✈️ ${p.name}: ${LOCATIONS[from].name} → ${LOCATIONS[to].name} (${paid})`);
     game.busy = true;
@@ -434,7 +577,7 @@ function actBuy(p, qty) {
     if (!canAct(p)) return false;
     const loc = LOCATIONS[p.location];
     if (loc.isBunker) return fail(p, 'Hier gibt es keinen Markt.');
-    if (game.roundMods.embargo === p.location) return fail(p, `Embargo! In ${loc.name} darf diese Runde niemand handeln.`);
+    if (isEmbargoed(p, p.location)) return fail(p, `Embargo! In ${loc.name} darf diese Runde niemand handeln.`);
     const q = purchaseQuote(p, p.location, qty);
     if (!q.affordable) return fail(p, 'Nicht genug Geld!');
 
@@ -442,8 +585,9 @@ function actBuy(p, qty) {
     let paid = q.fromLocal > 0 ? `${fmt(q.fromLocal)} ${CURRENCIES[q.c].name}` : '';
     if (q.usesForeign) {
         const other = payEUR(p, q.foreignEUR, FIAT.find(x => x !== q.c && p.money[x] > 0));
-        paid += (paid ? ' + ' : '') + other + (game.roundMods.freeTrade ? '' : ' (Fremdwährung +30%)');
-        p.stats.fees += q.foreignEUR - q.foreignEUR / (game.roundMods.freeTrade ? 1 : CONFIG.foreignMarkup);
+        const pct = Math.round((q.markup - 1) * 100);
+        paid += (paid ? ' + ' : '') + other + (pct ? ` (Fremdwährung +${pct}%)` : '');
+        p.stats.fees += q.foreignEUR - q.foreignEUR / q.markup;
     }
     p.resources[loc.resource] += qty;
     p.stats.bought += qty;
@@ -451,6 +595,7 @@ function actBuy(p, qty) {
     spend(p);
     Sound.play('cash');
     const r = RESOURCES[loc.resource];
+    pop(p, `+${qty} ${r.icon}`);
     toast(`+${qty} ${r.icon} ${r.name}`, 'good');
     log(`🛒 ${p.name} kauft ${qty}× ${r.name} für ${paid}. Preis steigt (Nachfrage)!`);
     return true;
@@ -467,6 +612,7 @@ function actSell(p, res) {
     const { c, amount } = payLocal(game, p, eur);
     spend(p);
     Sound.play('coin');
+    pop(p, `+${fmt(amount)} ${CURRENCIES[c].symbol}`, '#fbbf24');
     toast(`+${fmt(amount)} ${CURRENCIES[c].name}`, 'good');
     log(`💱 ${p.name} verkauft 1 ${RESOURCES[res].name} für ${fmt(amount)} ${CURRENCIES[c].name}.`);
     return true;
@@ -477,13 +623,14 @@ async function actSmuggle(p, res) {
     const loc = LOCATIONS[p.location];
     if (loc.isBunker) return fail(p, 'Hier gibt es keinen Schwarzmarkt.');
     const source = CONTINENT_IDS.find(id => LOCATIONS[id].resource === res);
-    const eur = unitPriceEUR(source) * CONFIG.blackMarketMarkup;
+    const terms = smuggleTerms(p);
+    const eur = unitPriceEUR(source) * terms.markup;
     const paid = payEUR(p, eur, localCurrency(p));
     if (!paid) return fail(p, 'Nicht genug Geld für den Schwarzmarkt!');
     spend(p);
     p.stats.smuggled++;
-    const chance = CONFIG.blackMarketCatchChance + p.record * 0.1;
-    if (Math.random() < chance) {
+    if (Math.random() < terms.chance) {
+        pop(p, '🚨 ERWISCHT', '#ef4444');
         p.record++;
         p.stats.caught++;
         const fineEUR = 150 + p.record * 50;
@@ -499,6 +646,7 @@ async function actSmuggle(p, res) {
     }
     p.resources[res]++;
     Sound.play('cash');
+    pop(p, `🕶️ +1 ${RESOURCES[res].icon}`);
     toast(`🕶️ +1 ${RESOURCES[res].icon} ${RESOURCES[res].name} (Schwarzmarkt)`, 'good');
     log(`🕶️ ${p.name} kauft 1 ${RESOURCES[res].name} auf dem Schwarzmarkt (${paid}).`);
     return true;
@@ -508,14 +656,24 @@ function actWork(p) {
     if (!canAct(p)) return false;
     const loc = LOCATIONS[p.location];
     if (loc.isBunker) return fail(p, 'Im Bunker gibt es keine Arbeit.');
-    const mult = game.roundMods.doubleWage === p.location ? 2 : 1;
-    const { c, amount } = payLocal(game, p, CONFIG.workEUR * mult);
+    const { c, amount } = payLocal(game, p, wageEUR(p));
     p.stats.worked++;
     spend(p);
     Sound.play('coin');
+    pop(p, `👷 +${fmt(amount)} ${CURRENCIES[c].symbol}`, '#fbbf24');
     toast(`👷 +${fmt(amount)} ${CURRENCIES[c].name}`, 'good');
     log(`👷 ${p.name} arbeitet in ${loc.name} und verdient ${fmt(amount)} ${CURRENCIES[c].name}.`);
     return true;
+}
+
+function wageEUR(p) {
+    let mult = game.roundMods.doubleWage === p.location ? 2 : 1;
+    mult *= game.roundMods.wageMult || 1;
+    return CONFIG.workEUR * mult;
+}
+
+function isEmbargoed(p, locId) {
+    return game.roundMods.embargo === locId && !has(p, 'diplomat');
 }
 
 function bankBlocked(p, exchange = false) {
@@ -524,8 +682,8 @@ function bankBlocked(p, exchange = false) {
     return null;
 }
 
-function exchangeQuote(from, to, amount) {
-    const fee = game.roundMods.freeTrade ? 0 : CONFIG.exchangeFee;
+function exchangeQuote(p, from, to, amount) {
+    const fee = feeFor(p);
     const gross = fromEUR(to, toEUR(from, amount));
     return { received: Math.floor(gross * (1 - fee)), feeEUR: toEUR(from, amount) * fee };
 }
@@ -537,7 +695,7 @@ function actExchange(p, from, to, amount) {
     amount = Math.floor(amount);
     if (from === to || !(amount > 0)) return fail(p, 'Ungültiger Tausch.');
     if (p.money[from] < amount) return fail(p, `Nicht genug ${CURRENCIES[from].name}.`);
-    const q = exchangeQuote(from, to, amount);
+    const q = exchangeQuote(p, from, to, amount);
     p.money[from] -= amount;
     p.money[to] += q.received;
     p.stats.fees += q.feeEUR;
@@ -557,6 +715,7 @@ function actLoan(p) {
     p.debt += CONFIG.loanAmountEUR;
     spend(p);
     Sound.play('cash');
+    pop(p, `💳 +${fmt(amount)} ${CURRENCIES[c].symbol}`, '#fbbf24');
     toast(`💳 Kredit: +${fmt(amount)} ${CURRENCIES[c].name}`, 'info');
     log(`💳 ${p.name} nimmt einen Kredit über ${CONFIG.loanAmountEUR} EUR auf (${Math.round(game.interest * 100)}% Zins pro Runde).`, 'info');
     return true;
@@ -601,22 +760,28 @@ function actCrypto(p, mode, coins) {
     coins = Math.floor(coins);
     if (!(coins > 0)) return fail(p, 'Ungültige Menge.');
     const eur = toEUR('crypto', coins);
+    const fee = feeFor(p);
+    const noLock = has(p, 'kryptobro');
+    const lockText = noLock ? 'Keine Sperrfrist (Krypto-Bro)' : `Sperrfrist ${CONFIG.cryptoLockTurns} Züge!`;
     if (mode === 'buy') {
-        const paid = payEUR(p, eur * (1 + CONFIG.exchangeFee), 'eur');
+        const paid = payEUR(p, eur * (1 + fee), 'eur');
         if (!paid) return fail(p, 'Nicht genug Geld!');
         p.money.crypto += coins;
-        p.stats.fees += eur * CONFIG.exchangeFee;
-        log(`₿ ${p.name} kauft ${coins} BunkerCoin für ${paid}. Sperrfrist ${CONFIG.cryptoLockTurns} Züge!`, 'info');
+        p.stats.fees += eur * fee;
+        log(`₿ ${p.name} kauft ${coins} BunkerCoin für ${paid}. ${lockText}`, 'info');
+        pop(p, `+${coins} ₿`, '#c084fc');
         toast(`₿ +${coins} BunkerCoin`, 'info');
     } else {
         if (p.money.crypto < coins) return fail(p, 'So viele Coins hast du nicht.');
         p.money.crypto -= coins;
-        const got = Math.floor(fromEUR('eur', eur * (1 - CONFIG.exchangeFee)));
+        const got = Math.floor(fromEUR('eur', eur * (1 - fee)));
         p.money.eur += got;
-        log(`₿ ${p.name} verkauft ${coins} BunkerCoin für ${fmt(got)} EUR. Sperrfrist ${CONFIG.cryptoLockTurns} Züge!`, 'info');
+        log(`₿ ${p.name} verkauft ${coins} BunkerCoin für ${fmt(got)} EUR. ${lockText}`, 'info');
+        pop(p, `₿ → +${fmt(got)} €`, '#c084fc');
         toast(`₿ → +${fmt(got)} EUR`, 'good');
     }
-    p.cryptoLock = CONFIG.cryptoLockTurns + 1;
+    p.stats.crypto++;
+    if (!noLock) p.cryptoLock = CONFIG.cryptoLockTurns + 1;
     spend(p);
     Sound.play('cash');
     return true;
@@ -625,11 +790,12 @@ function actCrypto(p, mode, coins) {
 function actEat(p) {
     if (game.over) return false;
     if (p.resources.food < 1) return fail(p, 'Keine Lebensmittel!');
-    if (p.foodBoosts >= CONFIG.maxFoodBoostsPerTurn) return fail(p, 'Du bist satt (max. 2× pro Zug).');
+    if (p.foodBoosts >= maxFoodBoosts(p)) return fail(p, `Du bist satt (max. ${maxFoodBoosts(p)}× pro Zug).`);
     p.resources.food--;
     p.foodBoosts++;
     p.ap++;
     Sound.play('pickup');
+    pop(p, '🌽 +1 AP', '#4ade80');
     toast('🌽 Nachtschicht! +1 Aktionspunkt', 'good');
     log(`🌽 ${p.name} isst 1 Lebensmittel und schiebt eine Nachtschicht (+1 AP).`);
     render();
@@ -644,7 +810,9 @@ async function breachPact(p, target) {
     if (eur > 0) payEUR(p, eur, localCurrency(p));
     target.money.eur += Math.floor(eur);
     p.record++;
+    p.stats.breaches++;
     Sound.play('police');
+    pop(p, '⚖️ VERTRAGSBRUCH', '#ef4444');
     log(`⚖️ VERTRAGSBRUCH! ${p.name} bricht den Nichtangriffspakt und zahlt ${fmt(eur)} EUR Konventionalstrafe an ${target.name}.`, 'bad');
     news(`Skandal: ${p.name} bricht Nichtangriffspakt mit ${target.name}!`);
     toast('⚖️ Vertragsbruch! Konventionalstrafe fällig.', 'bad');
@@ -668,15 +836,16 @@ async function actAttack(p, target) {
     const inOwnBunker = ownedBunker(target) === target.location && game.bunkers[target.location].completed;
     const a = randInt(1, 6);
     const d = randInt(1, 6);
-    const aBonus = p.resources.military;
-    const dBonus = target.resources.military + (inOwnBunker ? 2 : 0);
+    const aBonus = combatBonus(p);
+    const dBonus = combatBonus(target) + (inOwnBunker ? 2 : 0);
     const win = a + aBonus > d + dBonus;
     const tie = a + aBonus === d + dBonus;
+    const label = (x, extra = '') => `Militär${has(x, 'general') ? ' +1 General' : ''}${extra}`;
 
     Globe.explosion(p.location, false);
     await showDice(`${p.name} greift ${target.name} an!`,
-        { name: p.name, color: p.color, roll: a, bonus: aBonus, label: 'Militär' },
-        { name: target.name, color: target.color, roll: d, bonus: dBonus, label: inOwnBunker ? 'Militär +2 Bunker' : 'Militär' },
+        { name: p.name, color: p.color, roll: a, bonus: aBonus, label: label(p) },
+        { name: target.name, color: target.color, roll: d, bonus: dBonus, label: label(target, inOwnBunker ? ' +2 Bunker' : '') },
         win ? `${p.name} gewinnt!` : tie ? 'Patt – beide ziehen sich zurück' : `${target.name} wehrt ab!`, win ? 'win' : tie ? '' : 'lose');
 
     if (win) {
@@ -695,6 +864,7 @@ async function actAttack(p, target) {
                 log(`🛡️ Versicherung ersetzt ${target.name} 1 ${RESOURCES[k].name}.`, 'good');
             }
         }
+        pop(p, '⚔️ SIEG', '#4ade80');
         if (taken.length) {
             p.stats.stolen += taken.length;
             log(`⚔️ ${p.name} besiegt ${target.name} und erbeutet ${taken.join(' + ')}!`, 'good');
@@ -709,6 +879,7 @@ async function actAttack(p, target) {
     } else if (!tie) {
         p.stats.lost++;
         p.resources.military = Math.max(0, p.resources.military - 1);
+        pop(p, '−1 ⚔️', '#ef4444');
         log(`🛡️ ${target.name} wehrt ${p.name} ab! ${p.name} verliert 1 Militär.`, 'bad');
         Sound.play('lose');
     } else {
@@ -735,20 +906,22 @@ async function actRaidBunker(p) {
     const present = owner.location === id;
     const a = randInt(1, 6);
     const d = randInt(1, 6);
-    const aBonus = p.resources.military;
-    const dBonus = (b.completed ? 3 : 1) + (present ? owner.resources.military : 0);
+    const aBonus = combatBonus(p);
+    const dBonus = bunkerDefense(b);
     const win = a + aBonus > d + dBonus;
     const title = b.completed ? `${p.name} stürmt den Bunker von ${owner.name}!` : `${p.name} sabotiert die Baustelle von ${owner.name}!`;
 
     Globe.explosion(id, false);
     await showDice(title,
-        { name: p.name, color: p.color, roll: a, bonus: aBonus, label: 'Militär' },
+        { name: p.name, color: p.color, roll: a, bonus: aBonus, label: has(p, 'general') ? 'Militär +1 General' : 'Militär' },
         { name: `Bunker ${owner.name}`, color: owner.color, roll: d, bonus: dBonus, label: present ? 'Mauern + Besitzer-Militär' : 'Bunkermauern' },
         win ? (b.completed ? 'BUNKER ÜBERNOMMEN!' : 'SABOTAGE GELUNGEN!') : 'Angriff abgewehrt!', win ? 'win' : 'lose');
 
     if (win) {
+        pop(p, b.completed ? '🏴 ÜBERNAHME' : '💣 SABOTAGE', '#ef4444');
         if (b.completed) {
             b.owner = p.id;
+            b.progress = stepsFor(p);
             if (present) {
                 owner.location = rand(ADJACENCY[id]);
                 Globe.layoutPawns(game.players);
@@ -798,7 +971,7 @@ async function actBuild(p) {
             const txt = Object.entries(need).filter(([, v]) => v > 0).map(([k, v]) => `${v} ${RESOURCES[k].name}`).join(', ');
             return fail(p, `Es fehlen: ${txt} (Rohstoffe zählen als Joker)`);
         }
-        for (const [k, v] of Object.entries(CONFIG.bunkerRequirements)) {
+        for (const [k, v] of Object.entries(reqFor(p))) {
             const fromOwn = Math.min(v, p.resources[k]);
             p.resources[k] -= fromOwn;
             p.resources.rare -= v - fromOwn;
@@ -809,20 +982,24 @@ async function actBuild(p) {
         news(`${p.name} gräbt in ${loc.name} – Nachbarn beunruhigt`);
     }
 
+    const steps = stepsFor(p);
     b.progress++;
     spend(p);
     Sound.play('build');
     Globe.ring(id, p.color, 1);
-    if (b.progress >= CONFIG.bunkerBuildSteps) {
+    Globe.sparks(id, p.color);
+    if (b.progress >= steps) {
         b.completed = true;
         Sound.play('win');
         flash();
+        pop(p, '✅ BUNKER FERTIG', '#4ade80');
         toast(`🛖 ${p.name}: BUNKER FERTIG!`, 'good');
         log(`✅ ${p.name} hat den Bunker in ${loc.name} fertiggestellt! Jetzt nur noch hier bleiben...`, 'good');
         news(`${p.name} vollendet Bunker in ${loc.name}!`);
     } else {
-        toast(`🛖 Baufortschritt ${b.progress}/${CONFIG.bunkerBuildSteps}`, 'info');
-        log(`🛖 ${p.name} baut weiter (${b.progress}/${CONFIG.bunkerBuildSteps}).`);
+        pop(p, `🛖 ${b.progress}/${steps}`);
+        toast(`🛖 Baufortschritt ${b.progress}/${steps}`, 'info');
+        log(`🛖 ${p.name} baut weiter (${b.progress}/${steps}).`);
     }
     refreshBunkers();
     render();
@@ -879,15 +1056,23 @@ async function actContract(p, target, offer) {
     return true;
 }
 
+function bunkerDefense(b) {
+    const owner = game.players[b.owner];
+    const present = owner.location === BUNKER_ORDER.find(id => game.bunkers[id] === b);
+    return (b.completed ? 3 : 1) + (present ? combatBonus(owner) : 0);
+}
+
 function refreshBunkers() {
     for (const id of BUNKER_ORDER) {
         const b = game.bunkers[id];
         if (!b.available) continue;
-        if (b.owner === null) Globe.setBunkerState(id, 'free', null, 'Frei');
-        else {
+        if (b.owner === null) {
+            Globe.setBunkerState(id, 'free', null, 'Frei', 0);
+        } else {
             const o = game.players[b.owner];
+            const steps = stepsOfBunker(b);
             Globe.setBunkerState(id, b.completed ? 'done' : 'building', o.color,
-                b.completed ? `✔ ${o.name}` : `${o.name} ${b.progress}/${CONFIG.bunkerBuildSteps}`);
+                b.completed ? `✔ ${o.name}` : `${o.name} ${b.progress}/${steps}`, b.progress / steps);
         }
     }
 }
@@ -907,12 +1092,15 @@ function fateOf(p) {
 async function endGame() {
     game.over = true;
     game.busy = true;
+    clearSave();
     closeModal();
     hideTooltip();
+    recordWealth();
     const fates = game.players.map(p => ({ p, ...fateOf(p) }));
     const protectedIds = fates.filter(f => f.alive).map(f => f.bunker);
 
     Sound.play('siren');
+    Sound.stopMusic();
     Globe.setThreat(1);
     $('nuke-alert').classList.add('active');
     await sleep(2600);
@@ -920,6 +1108,7 @@ async function endGame() {
     document.body.classList.add('apocalypse');
     Sound.stopDrone();
     await Globe.apocalypse(protectedIds);
+    Globe.nuclearWinter();
     await sleep(800);
     Sound.play('explosion', true);
     $('flash').className = 'white-out';

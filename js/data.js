@@ -66,8 +66,59 @@ const ADJACENCY = {
     spitzbergen: ['europa', 'nordamerika'],
 };
 
-const PLAYER_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4'];
+// Colorblind-validated categorical order (dark surface); order matters for adjacent-pair separation.
+const PLAYER_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
 const BOT_NAMES = ['Gordon Gekko', 'Dagobert', 'Elon Mosk', 'Frau Lagarde', 'Warren B.', 'Satoshi'];
+
+const CHARACTERS = {
+    bankerin: {
+        name: 'Die Bankerin', icon: '💼',
+        power: 'Keine Wechselgebühren. Zahlt nur den halben Kreditzins.',
+        story: 'Hat 2008 überlebt. Das hier schafft sie auch.',
+    },
+    general: {
+        name: 'Der General', icon: '🎖️',
+        power: '+1 auf jeden Kampfwurf. Startet mit 1 Militär.',
+        story: 'Hat den roten Knopf schon einmal gesehen. Von nahem.',
+    },
+    ingenieurin: {
+        name: 'Die Ingenieurin', icon: '🛠️',
+        power: 'Bunker braucht 1 Technik weniger und nur 2 Bauschritte.',
+        story: 'Baut Bunker schneller als IKEA-Regale.',
+    },
+    bauer: {
+        name: 'Der Bauer', icon: '🧑‍🌾',
+        power: 'Startet mit 2 Lebensmitteln. Darf 3× pro Zug essen.',
+        story: 'Hat genug Kartoffeln für drei Weltuntergänge.',
+    },
+    kryptobro: {
+        name: 'Der Krypto-Bro', icon: '🚀',
+        power: 'Keine Sperrfrist nach Krypto-Geschäften. Startet mit 2 BunkerCoin.',
+        story: 'HODL. Auch während der Apokalypse.',
+    },
+    schmugglerin: {
+        name: 'Die Schmugglerin', icon: '🦹',
+        power: 'Schwarzmarkt nur 1.5× Preis und nur 10% Risiko.',
+        story: 'Kennt jeden Grenzbeamten beim Vornamen.',
+    },
+    diplomat: {
+        name: 'Der Diplomat', icon: '🎩',
+        power: 'Ignoriert Embargos und Grenzschliessungen. Reisen 15% günstiger.',
+        story: 'Diplomatenpass öffnet jede Tür. Fast jede.',
+    },
+    oekonomin: {
+        name: 'Die Ökonomin', icon: '📊',
+        power: 'Sieht die nächste Ereigniskarte voraus. +50% Einkommen.',
+        story: 'Hat die Krise vorausgesagt. Niemand hat zugehört.',
+    },
+};
+const CHARACTER_IDS = Object.keys(CHARACTERS);
+
+const AI_SPEEDS = {
+    slow: { label: 'Langsam', delay: 1200, travel: 1.3 },
+    normal: { label: 'Normal', delay: 700, travel: 1 },
+    fast: { label: 'Schnell', delay: 200, travel: 0.55 },
+};
 
 // Coarse [lon, lat] outlines, only used to paint the dotted globe.
 const LAND_SHAPES = [
@@ -230,6 +281,68 @@ const EVENT_CARDS = [
         text: () => 'Freihandelsabkommen! Diese Runde gibt es keinen Aufschlag beim Kauf mit Fremdwährung und keine Wechselgebühren.',
         lesson: 'Freihandel senkt Transaktionskosten und fördert den Austausch von Gütern.',
         apply: g => { g.roundMods.freeTrade = true; },
+    },
+    {
+        title: 'Stellvertreterkrieg', icon: '🎯', kind: 'bad',
+        text: c => `Eine Rakete schlägt in ${LOCATIONS[c].name} ein! Alle Spieler dort verlieren 1 zufällige Ressource (ausser sie sind versichert). Die Preise dort steigen um 30%.`,
+        lesson: 'Kriege zerstören Kapital und Infrastruktur. Das verknappt Güter und treibt die Preise.',
+        pick: g => rand(CONTINENT_IDS),
+        apply: (g, c) => {
+            g.priceIndex[c] *= 1.3;
+            g.players.filter(p => p.location === c).forEach(p => {
+                const owned = Object.keys(p.resources).filter(k => p.resources[k] > 0);
+                if (!owned.length || p.insurance > 0) return;
+                p.resources[rand(owned)]--;
+            });
+        },
+        fx: (g, c) => Globe.missileBetween(rand(CONTINENT_IDS.filter(x => x !== c)), c, '#ff3b3b'),
+    },
+    {
+        title: 'Bank-Run', icon: '🏚️', kind: 'bad',
+        text: c => `Gerüchte über eine Pleite der Zentralbank von ${LOCATIONS[c].name}! Alle verlieren 25% ihrer ${CURRENCIES[LOCATIONS[c].currency].name}-Ersparnisse.`,
+        lesson: 'Heben alle gleichzeitig ihr Geld ab, kann jede Bank zahlungsunfähig werden. In der Schweiz schützt die Einlagensicherung Guthaben bis 100 000 CHF.',
+        pick: g => rand(CONTINENT_IDS),
+        apply: (g, c) => {
+            const cur = LOCATIONS[c].currency;
+            g.players.forEach(p => { p.money[cur] = Math.floor(p.money[cur] * 0.75); });
+        },
+    },
+    {
+        title: 'Lieferkettenkrise', icon: '🚢', kind: 'bad',
+        text: () => 'Ein Frachter blockiert den Suezkanal. Alle Ressourcen werden 25% teurer.',
+        lesson: 'Globale Lieferketten sind effizient, aber anfällig: Ein einziger Engpass verteuert weltweit alles.',
+        apply: g => { for (const id of CONTINENT_IDS) g.priceIndex[id] *= 1.25; },
+    },
+    {
+        title: 'Mindestlohn', icon: '💶', kind: 'good',
+        text: () => 'Das Parlament führt einen Mindestlohn ein. Arbeiten bringt diese Runde 50% mehr.',
+        lesson: 'Ein Mindestlohn ist eine gesetzliche Lohnuntergrenze. Er schützt Arbeitnehmende, erhöht aber die Kosten der Arbeitgeber.',
+        apply: g => { g.roundMods.wageMult = 1.5; },
+    },
+    {
+        title: 'Erbschaft', icon: '📜', kind: 'good',
+        text: id => `Eine reiche Tante von ${game.players[id].name} ist verstorben. ${game.players[id].name} erbt 400 EUR!`,
+        lesson: 'Das Erbrecht (ZGB) regelt, wer das Vermögen einer verstorbenen Person erhält. Pflichtteile schützen nahe Verwandte.',
+        pick: g => rand(g.players).id,
+        apply: (g, id) => { g.players[id].money.eur += 400; },
+    },
+    {
+        title: 'Energie-Kartell', icon: '🛢️', kind: 'bad',
+        text: () => 'Die Energieproduzenten sprechen heimlich ihre Preise ab. Energie kostet fast das Doppelte!',
+        lesson: 'Preisabsprachen (Kartelle) schalten den Wettbewerb aus und sind laut Kartellgesetz verboten.',
+        apply: g => { g.priceIndex.afrika *= 1.9; },
+    },
+    {
+        title: 'Spionage-Skandal', icon: '🕵️', kind: 'mixed',
+        text: () => 'Abhörprotokolle tauchen auf! Das Vertrauen ist zerstört – alle Nichtangriffspakte werden aufgelöst.',
+        lesson: 'Ändern sich die Umstände grundlegend, kann ein Vertrag angepasst oder aufgelöst werden (clausula rebus sic stantibus).',
+        apply: g => { g.pacts = []; },
+    },
+    {
+        title: 'Zollkrieg', icon: '🧱', kind: 'bad',
+        text: () => 'Alle Länder erheben Strafzölle. Wer diese Runde mit Fremdwährung einkauft, zahlt 60% Aufschlag statt 30%.',
+        lesson: 'Zölle verteuern importierte Güter. Sie schützen die heimische Wirtschaft, schaden aber Konsumenten und dem Handel.',
+        apply: g => { g.roundMods.foreignMarkup = 1.6; },
     },
 ];
 

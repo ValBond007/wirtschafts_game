@@ -24,9 +24,7 @@ function botRaidTarget(p) {
     return BUNKER_ORDER.filter(id => {
         const b = game.bunkers[id];
         if (!b.available || b.owner === null || b.owner === p.id) return false;
-        const o = game.players[b.owner];
-        const defense = (b.completed ? 3 : 1) + (o.location === id ? o.resources.military : 0);
-        return p.resources.military >= defense;
+        return combatBonus(p) >= bunkerDefense(b);
     })[0] || null;
 }
 
@@ -51,7 +49,7 @@ async function botStep(p) {
     // Opportunistic robbery: only against clearly weaker, non-pact players.
     if (game.round >= 3 && !p.attackedThisTurn && !game.roundMods.noAttacks && p.resources.military >= 2) {
         const victim = game.players.find(o => o.id !== p.id && o.location === p.location && !pactBetween(p, o)
-            && o.resources.military + 2 <= p.resources.military
+            && combatBonus(o) + 2 <= combatBonus(p)
             && Object.values(o.resources).some(v => v > 0));
         if (victim) return actAttack(p, victim);
     }
@@ -86,7 +84,7 @@ async function botStep(p) {
         return botMoneyMove(p);
     }
 
-    if (p.resources.food > (CONFIG.bunkerRequirements.food) && p.foodBoosts < 1 && p.ap <= 1) {
+    if (p.resources.food > reqFor(p).food && p.foodBoosts < maxFoodBoosts(p) - 1 && p.ap <= 1) {
         return actEat(p);
     }
 
@@ -94,17 +92,20 @@ async function botStep(p) {
         const cheap = game.rates.crypto < CURRENCIES.crypto.baseRate * 0.85;
         const rich = game.rates.crypto > CURRENCIES.crypto.baseRate * 1.3;
         if (p.money.crypto > 0 && rich) return actCrypto(p, 'sell', p.money.crypto);
-        if (cheap && fiatEUR(p) > 900 && Math.random() < 0.2) return actCrypto(p, 'buy', 1);
+        const appetite = has(p, 'kryptobro') ? 0.6 : 0.2;
+        if (cheap && fiatEUR(p) > 900 && Math.random() < appetite) return actCrypto(p, 'buy', 1);
     }
 
-    if (!loc.isBunker && neededKeys.length === 1 && needed[neededKeys[0]] === 1 && !p.record && Math.random() < 0.35) {
+    const smuggler = has(p, 'schmugglerin');
+    const fewMissing = neededKeys.length === 1 && needed[neededKeys[0]] <= (smuggler ? 2 : 1);
+    if (!loc.isBunker && fewMissing && (smuggler || !p.record) && Math.random() < (smuggler ? 0.7 : 0.35)) {
         const source = botSourceOf(neededKeys[0]);
-        if (source !== p.location && fiatEUR(p) > unitPriceEUR(source) * CONFIG.blackMarketMarkup * 1.5) {
+        if (source !== p.location && fiatEUR(p) > unitPriceEUR(source) * smuggleTerms(p).markup * 1.5) {
             return actSmuggle(p, neededKeys[0]);
         }
     }
 
-    if (!loc.isBunker && needed[loc.resource] && game.roundMods.embargo !== p.location) {
+    if (!loc.isBunker && needed[loc.resource] && !isEmbargoed(p, p.location)) {
         const want = Math.min(3, needed[loc.resource]);
         for (let q = want; q >= 1; q--) {
             const quote = purchaseQuote(p, p.location, q);
@@ -125,7 +126,7 @@ async function botStep(p) {
 
     const crate = game.crates.find(c => ADJACENCY[p.location].includes(c.loc));
     const targets = neededKeys.map(botSourceOf)
-        .filter(id => id && game.roundMods.embargo !== id)
+        .filter(id => id && !isEmbargoed(p, id))
         .sort((a, b) => {
             const score = id => needed[LOCATIONS[id].resource] * 60 - travelCostEUR(p, id) + (game.crates.some(c => c.loc === id) ? 120 : 0);
             return score(b) - score(a);

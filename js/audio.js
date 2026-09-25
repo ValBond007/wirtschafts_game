@@ -124,5 +124,79 @@ const Sound = (() => {
         if (sfx[name]) sfx[name](...args);
     }
 
-    return { init, play, startDrone, stopDrone, setTension, toggleMute, isMuted: () => muted };
+    // Generative soundtrack: chord arpeggios over a bass line; tempo and drums follow the tension level.
+    const music = { timer: null, step: 0, next: 0, tension: 0 };
+    const CHORDS = [
+        { bass: 55.0, notes: [220.0, 261.63, 329.63, 440.0] },
+        { bass: 43.65, notes: [174.61, 220.0, 261.63, 349.23] },
+        { bass: 65.41, notes: [196.0, 261.63, 329.63, 392.0] },
+        { bass: 49.0, notes: [196.0, 246.94, 293.66, 392.0] },
+    ];
+
+    function kick(t) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.frequency.setValueAtTime(110, t);
+        osc.frequency.exponentialRampToValueAtTime(38, t + 0.18);
+        g.gain.setValueAtTime(0.35, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+        osc.connect(g).connect(master);
+        osc.start(t);
+        osc.stop(t + 0.3);
+    }
+
+    function note(freq, t, dur, type, vol) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        const f = ctx.createBiquadFilter();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        f.type = 'lowpass';
+        f.frequency.value = 1400 + music.tension * 1800;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(f).connect(g).connect(master);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+    }
+
+    function scheduleMusic() {
+        if (!ctx) return;
+        const stepLen = 0.42 - music.tension * 0.2;
+        while (music.next < ctx.currentTime + 0.35) {
+            const t = Math.max(music.next, ctx.currentTime);
+            if (!muted) {
+                const chord = CHORDS[Math.floor(music.step / 16) % CHORDS.length];
+                const s = music.step % 16;
+                const arp = [0, 1, 2, 3, 2, 1, 2, 3][s % 8];
+                note(chord.notes[arp] * (s >= 8 ? 2 : 1), t, stepLen * 1.8, 'triangle', 0.035);
+                if (s % 8 === 0) note(chord.bass, t, stepLen * 7, 'sawtooth', 0.05);
+                if (music.tension > 0.4 && s % 4 === 0) kick(t);
+                if (music.tension > 0.7 && s % 2 === 1) noise(0.05, 0.08, 8000, t - ctx.currentTime, 4000);
+            }
+            music.step++;
+            music.next = t + stepLen;
+        }
+    }
+
+    function startMusic() {
+        if (!ctx || music.timer) return;
+        music.next = ctx.currentTime + 0.2;
+        music.timer = setInterval(scheduleMusic, 90);
+    }
+
+    function stopMusic() {
+        clearInterval(music.timer);
+        music.timer = null;
+    }
+
+    function setMusicTension(level) {
+        music.tension = Math.max(0, Math.min(1, level));
+    }
+
+    return {
+        init, play, startDrone, stopDrone, setTension: level => { setTension(level); setMusicTension(level); },
+        startMusic, stopMusic, toggleMute, isMuted: () => muted,
+    };
 })();

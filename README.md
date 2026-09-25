@@ -31,9 +31,33 @@ Es gibt nur halb so viele Bunker wie Spieler.
 
 **Bunker:** 3 Lebensmittel, 2 Technik, 3 Energie und 2 Militär sammeln. Dann zu einem freien Bunker-Standort reisen (Südl. Alpen, Neuseeland, Spitzbergen) und 3× bauen. Danach im Bunker bleiben!
 
-**Aktionen:** Reisen (auf die Weltkugel klicken) · Markt (kaufen, verkaufen, Schwarzmarkt) · Arbeiten · Bank (Geld wechseln, Kredit, Versicherung) · Krypto · Angriff · Essen · Vertrag · Bunker bauen.
+**Aktionen (Tasten 1–0):** Reisen (auf die Weltkugel klicken) · Markt (kaufen, verkaufen, Schwarzmarkt) · Arbeiten · Bank (Geld wechseln, Kredit, Versicherung) · Krypto · Essen · Angriff · Vertrag · Bunker bauen · Zug beenden.
 
-Die ausführliche Anleitung gibt es im Spiel über den ❓-Knopf.
+Die ausführliche Anleitung gibt es im Spiel über den ❓-Knopf. Links im Spiel gibt ein **Berater** 💡 jederzeit einen Tipp, was als Nächstes sinnvoll ist.
+
+## Charaktere
+
+Jeder Spieler wählt einen Charakter mit einer Spezialfähigkeit (oder bekommt einen zufälligen):
+
+| Charakter          | Fähigkeit                                                          |
+|--------------------|--------------------------------------------------------------------|
+| 💼 Die Bankerin     | Keine Wechselgebühren, halber Kreditzins                           |
+| 🎖️ Der General      | +1 auf jeden Kampfwurf, startet mit 1 Militär                      |
+| 🛠️ Die Ingenieurin  | Bunker braucht 1 Technik weniger und nur 2 Bauschritte             |
+| 🧑‍🌾 Der Bauer        | Startet mit 2 Lebensmitteln, darf 3× pro Zug essen                 |
+| 🚀 Der Krypto-Bro   | Keine Sperrfrist bei Krypto, startet mit 2 BunkerCoin              |
+| 🦹 Die Schmugglerin | Schwarzmarkt nur 1.5× Preis und 10% Risiko                         |
+| 🎩 Der Diplomat     | Ignoriert Embargos und Grenzschliessungen, Reisen 15% günstiger    |
+| 📊 Die Ökonomin     | Sieht die nächste Ereigniskarte voraus, +50% Einkommen             |
+
+## Weitere Funktionen
+
+- **30 Ereigniskarten**, z. B. Hyperinflation, Bank-Run, Energie-Kartell, Zollkrieg, Mindestlohn, Erbschaft, Stellvertreterkrieg (mit Raketeneinschlag auf der Karte). Jede Karte erklärt das Wirtschafts- oder Rechtsthema dahinter.
+- **Tag/Nacht:** Die Sonne wandert jede Runde weiter, auf der Nachtseite leuchten die Städte.
+- **Automatisches Speichern:** Nach einem Neuladen geht es mit «Weiterspielen» weiter.
+- **KI-Tempo** einstellbar (Langsam/Normal/Schnell), auch während des Spiels über ⏩.
+- **Endbildschirm** mit Rangliste, Auszeichnungen (z. B. «Wolf of Wall Street», «Schuldenkönig») und einem Diagramm des Vermögensverlaufs aller Spieler.
+- **Musik**, die schneller und bedrohlicher wird, je näher der Krieg rückt.
 
 ## Zusammenfassung: Wirtschaft & Recht im Spiel
 
@@ -50,6 +74,7 @@ Wer bei Kriegsausbruch noch Schulden hat, verliert sogar seinen Bunker. Die Kryp
 Rechtliche Themen: Spieler schliessen **Verträge** ab (Tauschhandel, Nichtangriffspakt). Dabei gelten **Vertragsfreiheit** und *pacta sunt servanda*. Wer einen Vertrag bricht, zahlt eine **Konventionalstrafe**.
 **Schmuggel** auf dem Schwarzmarkt ist illegal. Wer erwischt wird, bekommt eine Busse, die Ware wird beschlagnahmt und es gibt einen Eintrag ins Strafregister.
 Eine **Versicherung** überträgt das Risiko eines Raubs gegen eine Prämie. **Sanktionen/Embargos** und **UNO-Resolutionen** zeigen, wie das Völkerrecht in den Handel eingreift.
+Weitere Karten behandeln das **Kartellgesetz** (Preisabsprachen sind verboten), die **Einlagensicherung** bei einem Bank-Run, den **Mindestlohn**, das **Erbrecht** (ZGB) und die **clausula rebus sic stantibus** (Verträge bei grundlegend veränderten Umständen).
 
 ## Technik
 

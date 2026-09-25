@@ -23,7 +23,8 @@
                 <p class="warning">⚠ Es gibt nur halb so viele Bunker wie Spieler. Nicht alle werden überleben.</p>
             </div>
             <div class="intro-buttons">
-                <button class="btn btn-primary btn-big" id="btn-to-setup">Spiel starten</button>
+                <button class="btn btn-primary btn-big hidden" id="btn-continue">▶ Weiterspielen</button>
+                <button class="btn btn-primary btn-big" id="btn-to-setup">Neues Spiel</button>
                 <button class="btn btn-ghost btn-big" id="btn-intro-help">Spielanleitung</button>
             </div>
             <p class="intro-hint">Tipp: Ton an! Die Weltkugel kannst du mit der Maus drehen und zoomen.</p>
@@ -47,6 +48,15 @@
                     <button data-len="long">Lang</button>
                 </div>
             </div>
+            <div class="setup-option">
+                <span>KI-Tempo:</span>
+                <div class="seg" id="seg-speed">
+                    <button data-speed="slow">Langsam</button>
+                    <button data-speed="normal" class="active">Normal</button>
+                    <button data-speed="fast">Schnell</button>
+                </div>
+            </div>
+            <div id="char-info" class="char-info"></div>
             <p id="setup-summary" class="setup-summary"></p>
             <button class="btn btn-primary btn-big full" id="btn-start">☢ Countdown starten</button>
         </div>
@@ -68,7 +78,8 @@
             <div class="tb-right">
                 <div id="tb-player"></div>
                 <div id="tb-ap"></div>
-                <button class="icon-btn" id="btn-mute" title="Ton an/aus">🔊</button>
+                <button class="icon-btn" id="btn-speed" title="KI-Tempo ändern">⏩</button>
+                <button class="icon-btn" id="btn-mute" title="Ton an/aus (M)">🔊</button>
                 <button class="icon-btn" id="btn-help" title="Spielanleitung">❓</button>
             </div>
         </header>
@@ -92,17 +103,18 @@
         </aside>
 
         <nav id="actions">
-            <button class="act" data-act="travel"><i>✈️</i><span>Reisen</span></button>
-            <button class="act" data-act="market"><i>🛒</i><span>Markt</span></button>
-            <button class="act" data-act="work"><i>👷</i><span>Arbeiten</span></button>
-            <button class="act" data-act="bank"><i>🏦</i><span>Bank</span></button>
-            <button class="act" data-act="crypto"><i>₿</i><span>Krypto</span></button>
-            <button class="act" data-act="eat"><i>🌽</i><span>Essen +1AP</span></button>
-            <button class="act" data-act="attack"><i>⚔️</i><span>Angriff</span></button>
-            <button class="act" data-act="contract"><i>📜</i><span>Vertrag</span></button>
-            <button class="act act-bunker" data-act="build"><i>🛖</i><span>Bunker bauen</span></button>
-            <button class="act act-end" data-act="end"><i>⏭</i><span>Zug beenden</span></button>
+            <button class="act" data-act="travel" data-key="1"><i>✈️</i><span>Reisen</span></button>
+            <button class="act" data-act="market" data-key="2"><i>🛒</i><span>Markt</span></button>
+            <button class="act" data-act="work" data-key="3"><i>👷</i><span>Arbeiten</span></button>
+            <button class="act" data-act="bank" data-key="4"><i>🏦</i><span>Bank</span></button>
+            <button class="act" data-act="crypto" data-key="5"><i>₿</i><span>Krypto</span></button>
+            <button class="act" data-act="eat" data-key="6"><i>🌽</i><span>Essen +1AP</span></button>
+            <button class="act" data-act="attack" data-key="7"><i>⚔️</i><span>Angriff</span></button>
+            <button class="act" data-act="contract" data-key="8"><i>📜</i><span>Vertrag</span></button>
+            <button class="act act-bunker" data-act="build" data-key="9"><i>🛖</i><span>Bunker bauen</span></button>
+            <button class="act act-end" data-act="end" data-key="0"><i>⏭</i><span>Zug beenden</span></button>
         </nav>
+        <div id="bot-bar" class="hidden"><span class="bot-spinner"></span><span id="bot-bar-text"></span></div>
     </div>
 
     <div id="tooltip"></div>
@@ -155,6 +167,9 @@
         </div>
     </div>
 
+    <!-- ROUND BANNER -->
+    <div id="round-banner"><div class="rb-inner"><span class="rb-small">Runde</span><span id="rb-num"></span><span id="rb-defcon"></span></div></div>
+
     <!-- NUKE ALERT -->
     <div id="nuke-alert" class="overlay">
         <div class="nuke-text">☢ DEFCON 1 ☢<br><span>RAKETENSTART BESTÄTIGT</span></div>
@@ -167,6 +182,8 @@
             <h1 id="end-title"></h1>
             <p id="end-sub"></p>
             <div id="end-results"></div>
+            <div id="end-awards"></div>
+            <div id="end-chart"></div>
             <div id="end-lessons"></div>
             <button class="btn btn-primary btn-big" onclick="location.reload()">Nochmal spielen</button>
         </div>
