@@ -90,7 +90,7 @@ async function botStep(p) {
         return actEat(p);
     }
 
-    if (!loc.isBunker && !game.roundMods.bankClosed && !game.laws.cryptoBan) {
+    if (!isBasic() && !loc.isBunker && !game.roundMods.bankClosed && !game.laws.cryptoBan) {
         const cheap = game.rates.crypto < CURRENCIES.crypto.baseRate * 0.85;
         const rich = game.rates.crypto > CURRENCIES.crypto.baseRate * 1.3;
         if (p.money.crypto > 0 && rich) return actCrypto(p, 'sell', p.money.crypto);
@@ -100,7 +100,7 @@ async function botStep(p) {
 
     const smuggler = has(p, 'schmugglerin');
     const fewMissing = neededKeys.length === 1 && needed[neededKeys[0]] <= (smuggler ? 2 : 1);
-    if (!loc.isBunker && fewMissing && (smuggler || !p.record) && Math.random() < (smuggler ? 0.7 : 0.35)) {
+    if (!isBasic() && !loc.isBunker && fewMissing && (smuggler || !p.record) && Math.random() < (smuggler ? 0.7 : 0.35)) {
         const source = botSourceOf(neededKeys[0]);
         if (source !== p.location && fiatEUR(p) > unitPriceEUR(source) * smuggleTerms(p).markup * 1.5) {
             return actSmuggle(p, neededKeys[0]);

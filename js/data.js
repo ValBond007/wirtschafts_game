@@ -166,6 +166,65 @@ const PROPOSALS = [
     },
 ];
 
+// ===== DESIGN THINKING =====
+
+const GAME_MODES = {
+    basic: { label: 'Einsteiger', desc: 'Ohne Krypto, Verträge, Schwarzmarkt und Volksabstimmungen – ideal für eine Schulstunde.' },
+    full: { label: 'Komplett', desc: 'Alle Mechaniken: Krypto, Verträge, Schwarzmarkt, Volksabstimmungen.' },
+};
+const BASIC_HIDDEN_ACTIONS = ['crypto', 'contract'];
+const BASIC_EXCLUDED_CARDS = ['Börsencrash', 'Krypto-Hype: To the Moon!', 'Spionage-Skandal'];
+const BASIC_EXCLUDED_CHARS = ['kryptobro', 'schmugglerin'];
+
+const FEEDBACK_RATINGS = [
+    { id: 'fun', label: 'Wie viel Spass hat dir das Spiel gemacht?', low: 'gar keinen', high: 'sehr viel' },
+    { id: 'rules', label: 'Wie gut hast du die Regeln verstanden?', low: 'gar nicht', high: 'sofort' },
+    { id: 'learn', label: 'Wie viel hast du über Wirtschaft & Recht gelernt?', low: 'nichts', high: 'sehr viel' },
+    { id: 'tension', label: 'Wie spannend war das Rennen um die Bunker?', low: 'langweilig', high: 'sehr spannend' },
+];
+const FEEDBACK_LENGTH = ['zu kurz', 'genau richtig', 'zu lang'];
+const FEEDBACK_OPEN = [
+    { id: 'liked', label: 'Was hat dir am besten gefallen?' },
+    { id: 'confused', label: 'Wo warst du verwirrt, gelangweilt oder frustriert?' },
+    { id: 'learned', label: 'Was hast du über Wirtschaft oder Recht gelernt?' },
+    { id: 'change', label: 'Was würdest du ändern?' },
+];
+
+const DESIGN_PHASES = [
+    {
+        name: 'Strategy', de: 'Ausgangslage klären', color: '#ef4444', group: 'right',
+        points: ['Zielgruppe: Mitschüler:innen im EF Wirtschaft & Recht (16–19 Jahre)', 'Ziel: W&R-Mechanismen erleben statt auswendig lernen', 'Rahmen: in einer Lektion spielbar, läuft offline im Browser'],
+    },
+    {
+        name: 'Research', de: 'Nutzer & Problem verstehen', color: '#f87171', group: 'right',
+        points: ['Analyse bestehender Spiele (Monopoly, Risiko, Catan, Pandemic, Plague Inc.)', 'Interviews und Testrunden mit der Zielgruppe', 'Feedback-Formular und Messdaten direkt im Spiel'],
+    },
+    {
+        name: 'Synthesize', de: 'Informationen interpretieren', color: '#fbbf24', group: 'right',
+        points: ['Empathy Map und Affinity Diagram aus Interviews und Feedback', 'Insight: Begriffe wie Inflation bleiben abstrakt, solange man sie nicht selbst spürt', 'HMW: Wie könnten wir die Regeln in unter 3 Minuten vermitteln?'],
+    },
+    {
+        name: 'Ideate', de: 'Ideen entwickeln', color: '#34d399', group: 'things',
+        points: ['Kontinente mit eigenen Währungen, knappe Bunker, Krypto mit Sperrfrist', 'Charaktere, Volksabstimmung, Quiz, Berater, geführte Tour', 'Einsteiger-Modus für kurze Runden'],
+    },
+    {
+        name: 'Prototype & Evaluate', de: 'Bauen und testen', color: '#94a3b8', group: 'things',
+        points: ['5 Prototypen: von der 2D-Karte zum 3D-Globus', 'Automatisierte Testspiele mit 4–6 KI-Spielern', 'Testrunden mit Menschen → Feedback → Verbesserung'],
+    },
+    {
+        name: 'Build', de: 'Umsetzen', color: '#e2e8f0', group: 'things',
+        points: ['Fertiges Spiel mit Spielanleitung und Zusammenfassung', 'Läuft auf jedem Mac/PC per Doppelklick', 'Präsentation mit Spielrunde in der Klasse'],
+    },
+];
+
+const ITERATIONS = [
+    { v: 'Prototyp 1', date: '23.09.2026', text: '2D-Weltkarte im Browser: Kontinente, Währungen, Kaufen, Reisen, Bunkerbau.' },
+    { v: 'Prototyp 2', date: '25.09.2026', text: '3D-Globus, KI-Gegner, Ereigniskarten, Kredite, Verträge, Schwarzmarkt. Test: Das Spiel fror in Runde 2 ein → behoben. Die KI raubte schon in Runde 1 → greift erst ab Runde 3 an.' },
+    { v: 'Prototyp 3', date: '25.09.2026', text: 'Charaktere, Tag/Nacht, Berater, Autosave, Endbildschirm mit Diagramm. Test: Spielerfarben für Farbenblinde schlecht unterscheidbar → neue Farben.' },
+    { v: 'Prototyp 4', date: '25.09.2026', text: 'Volksabstimmung, Quiz, geführte Tour. Test: Start oft auf der dunklen Nachtseite → Sonne startet über dem ersten Spieler. Langsame Computer → automatische Grafikanpassung.' },
+    { v: 'Prototyp 5', date: '21.10.2026', text: 'Design Thinking: Einsteiger-Modus für kurze Runden, Feedback-Formular und Testauswertung im Spiel, Making-of.' },
+];
+
 const LAW_LABELS = {
     basicIncome: '🎁 Grundeinkommen',
     cryptoBan: '🚫 Kryptoverbot',

@@ -27,6 +27,10 @@
                 <button class="btn btn-primary btn-big" id="btn-to-setup">Neues Spiel</button>
                 <button class="btn btn-ghost btn-big" id="btn-intro-help">Spielanleitung</button>
             </div>
+            <div class="intro-links">
+                <button class="btn btn-ghost btn-small" id="btn-makingof">🛠️ Making-of (Design Thinking)</button>
+                <button class="btn btn-ghost btn-small" id="btn-report">📊 Testauswertung</button>
+            </div>
             <p class="intro-hint">Tipp: Ton an! Die Weltkugel kannst du mit der Maus drehen und zoomen.</p>
             <div id="hall" class="hall hidden"></div>
         </div>
@@ -41,6 +45,14 @@
                 <button class="btn btn-ghost" id="btn-add-player">+ Spieler</button>
                 <button class="btn btn-ghost" id="btn-remove-player">− Spieler</button>
             </div>
+            <div class="setup-option">
+                <span>Regeln:</span>
+                <div class="seg" id="seg-mode">
+                    <button data-mode="basic">Einsteiger</button>
+                    <button data-mode="full" class="active">Komplett</button>
+                </div>
+            </div>
+            <p id="mode-desc" class="setup-summary"></p>
             <div class="setup-option">
                 <span>Spieldauer:</span>
                 <div class="seg" id="seg-length">
@@ -212,7 +224,10 @@
             <div id="end-awards"></div>
             <div id="end-chart"></div>
             <div id="end-lessons"></div>
-            <button class="btn btn-primary btn-big" onclick="location.reload()">Nochmal spielen</button>
+            <div class="end-buttons">
+                <button class="btn btn-good btn-big" id="btn-feedback">📝 Feedback geben</button>
+                <button class="btn btn-primary btn-big" onclick="location.reload()">Nochmal spielen</button>
+            </div>
         </div>
     </section>
 
@@ -223,5 +238,6 @@
     <script src="js/ui.js"></script>
     <script src="js/game.js"></script>
     <script src="js/bots.js"></script>
+    <script src="js/feedback.js"></script>
 </body>
 </html>

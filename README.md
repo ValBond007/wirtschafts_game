@@ -50,6 +50,15 @@ Jeder Spieler wählt einen Charakter mit einer Spezialfähigkeit (oder bekommt e
 | 🎩 Der Diplomat     | Ignoriert Embargos und Grenzschliessungen, Reisen 15% günstiger    |
 | 📊 Die Ökonomin     | Sieht die nächste Ereigniskarte voraus, +50% Einkommen             |
 
+## Design Thinking
+
+Der ganze Entwicklungsprozess (Strategy → Research → Synthesize → Ideate → Prototype & Evaluate → Build) ist in [`docs/DESIGN_THINKING.md`](docs/DESIGN_THINKING.md) dokumentiert. Im Spiel gibt es dazu:
+
+- **🛠️ Making-of** (Startbildschirm): zeigt alle Phasen und die 5 Prototypen – für die Präsentation.
+- **🎚️ Einsteiger-Modus**: ohne Krypto, Verträge, Schwarzmarkt und Abstimmungen – für eine Runde in einer Schulstunde.
+- **📝 Feedback geben** (Endbildschirm): Formular für Testpersonen mit Bewertungen und offenen Fragen.
+- **📊 Testauswertung** (Startbildschirm): Durchschnittswerte, gemessene Spieldauer, häufigste Fehlermeldungen, alle Antworten und Export als CSV für Excel.
+
 ## Weitere Funktionen
 
 - **🗳️ Volksabstimmung:** Alle 3 Runden stimmen alle Spieler offen über ein Gesetz ab (wie an einer Landsgemeinde), z. B. Grundeinkommen, Kryptoverbot, Zinsdeckel, Schutzraumpflicht, Vermögenssteuer. Die KI-Spieler stimmen nach ihrem Eigeninteresse. Angenommene Gesetze gelten bis zum Spielende.

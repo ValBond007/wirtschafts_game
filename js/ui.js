@@ -314,7 +314,9 @@ function renderActions(p) {
         end: false,
     };
     document.querySelectorAll('#actions .act').forEach(btn => {
-        btn.disabled = locked || state[btn.dataset.act];
+        const hiddenInMode = isBasic() && BASIC_HIDDEN_ACTIONS.includes(btn.dataset.act);
+        btn.classList.toggle('hidden', hiddenInMode);
+        btn.disabled = locked || hiddenInMode || state[btn.dataset.act];
     });
     $('actions').classList.toggle('hidden', p.isBot);
 }
@@ -325,6 +327,7 @@ function onGlobeClick(locId) {
     if (!game || game.over || game.busy) return;
     const p = cp();
     if (p.isBot || locId === p.location) return;
+    track('travel');
     actTravel(p, locId);
 }
 
@@ -469,7 +472,7 @@ function openMarket() {
             <p>Jeder Kauf erhöht den Preis um ${Math.round(CONFIG.demandPriceBump * 100)}% (Nachfrage steigt → Preis steigt).${has(p, 'diplomat') && game.roundMods.embargo === p.location ? ' Dein Diplomatenpass umgeht das Embargo!' : ''}</p>
             <div class="m-options">${buy}</div></div>
         <div class="m-section"><h4>Verkaufen</h4><p>Händler zahlen 65% des Marktwerts – in Lokalwährung.</p><div class="m-options">${sell}</div></div>
-        <div class="m-section"><h4>🕶️ Schwarzmarkt (illegal!)</h4><p>Ware aus anderen Kontinenten zum ${terms.markup}-fachen Preis. Wirst du erwischt: Ware weg, Busse, Vorstrafe und dein Zug ist vorbei.</p><div class="m-options">${black}</div></div>`, true);
+        ${isBasic() ? '' : `<div class="m-section"><h4>🕶️ Schwarzmarkt (illegal!)</h4><p>Ware aus anderen Kontinenten zum ${terms.markup}-fachen Preis. Wirst du erwischt: Ware weg, Busse, Vorstrafe und dein Zug ist vorbei.</p><div class="m-options">${black}</div></div>`}`, true);
     bindModal('[data-buy]', el => afterAction(actBuy(p, Number(el.dataset.buy))));
     bindModal('[data-sell]', el => afterAction(actSell(p, el.dataset.sell)));
     bindModal('[data-smuggle]', el => afterAction(actSmuggle(p, el.dataset.smuggle)));
@@ -682,7 +685,9 @@ function helpHTML() {
             <li><b>8 Vertrag</b> (0 AP) – Tauschhandel oder Nichtangriffspakt. Vertragsbruch kostet ${CONFIG.pactPenaltyEUR} € Strafe.</li>
             <li><b>9 Bunker bauen</b> · <b>0 Zug beenden</b> · <b>M</b> Ton an/aus · <b>Esc</b> Fenster schliessen</li>
         </ul>
-        <h4>🗳️ Volksabstimmung</h4>
+        <h4>🎚️ Einsteiger- oder Komplett-Modus</h4>
+        <p>Im <b>Einsteiger-Modus</b> fallen Krypto, Verträge, Schwarzmarkt und Volksabstimmungen weg. So versteht man das Spiel in wenigen Minuten und schafft eine Runde in einer Schulstunde. Der <b>Komplett-Modus</b> enthält alle Mechaniken.</p>
+        <h4>🗳️ Volksabstimmung (nur Komplett-Modus)</h4>
         <p>Alle ${CONFIG.referendumEvery} Runden stimmen alle Spieler offen über ein neues Gesetz ab – wie an einer Landsgemeinde. Die Mehrheit entscheidet, bei Gleichstand ist die Vorlage abgelehnt. Angenommene Gesetze gelten bis zum Spielende (z. B. Grundeinkommen, Kryptoverbot, Zinsdeckel).</p>
         <p>💡 Der <b>Berater</b> links sagt dir jederzeit, was als Nächstes sinnvoll ist. Das Spiel speichert automatisch – du kannst später über «Weiterspielen» fortfahren.</p>
         ${game && !game.over ? '<p><button class="btn btn-primary btn-small" id="help-tour">▶ Geführte Tour starten</button></p>' : ''}
@@ -701,6 +706,7 @@ function helpHTML() {
 }
 
 function openHelp() {
+    if (game && game.metrics) game.metrics.helpOpens++;
     openModal('❓ Spielanleitung', helpHTML(), true);
     const tourBtn = $('help-tour');
     if (tourBtn) tourBtn.addEventListener('click', () => { closeModal(); startTour(); });
@@ -908,21 +914,22 @@ function startTour() {
             Sound.play('hover');
         }
 
-        function finish() {
+        function finish(skipped) {
             $('tour').classList.add('hidden');
             markTourDone();
             setContinue(null);
+            if (game && game.metrics) game.metrics.tour = skipped ? `übersprungen bei Schritt ${i + 1}` : 'fertig angeschaut';
             resolve();
         }
 
         function next() {
             i++;
-            if (i >= steps.length) finish();
+            if (i >= steps.length) finish(false);
             else show();
         }
 
         $('tour-next').onclick = next;
-        $('tour-skip').onclick = finish;
+        $('tour-skip').onclick = () => finish(true);
         setContinue(next);
         show();
         requestAnimationFrame(show);
@@ -1210,10 +1217,15 @@ const setupState = {
     ],
     length: 'normal',
     speed: 'normal',
+    mode: 'full',
 };
 
 function renderSetup() {
-    const charOpts = sel => `<option value="">🎲 Zufall</option>` + CHARACTER_IDS.map(id =>
+    const allowed = CHARACTER_IDS.filter(id => setupState.mode === 'full' || !BASIC_EXCLUDED_CHARS.includes(id));
+    setupState.players.forEach(s => { if (s.char && !allowed.includes(s.char)) s.char = ''; });
+    $('mode-desc').textContent = GAME_MODES[setupState.mode].desc;
+    $('seg-mode').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === setupState.mode));
+    const charOpts = sel => `<option value="">🎲 Zufall</option>` + allowed.map(id =>
         `<option value="${id}" ${sel === id ? 'selected' : ''}>${CHARACTERS[id].icon} ${CHARACTERS[id].name}</option>`).join('');
     $('setup-players').innerHTML = setupState.players.map((s, i) => {
         const c = CHARACTERS[s.char];
@@ -1302,6 +1314,15 @@ function initUI() {
     });
     bindSeg('seg-length', 'length', 'len');
     bindSeg('seg-speed', 'speed', 'speed');
+    $('seg-mode').querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+        setupState.mode = btn.dataset.mode;
+        if (setupState.mode === 'basic' && setupState.length === 'normal') {
+            setupState.length = 'short';
+            $('seg-length').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.len === 'short'));
+        }
+        Sound.play('click');
+        renderSetup();
+    }));
     $('btn-start').addEventListener('click', () => {
         const setup = setupState.players.map((s, i) => ({
             name: (s.name || '').trim() || (s.isBot ? BOT_NAMES[i] : `Spieler ${i + 1}`),
@@ -1309,7 +1330,7 @@ function initUI() {
             char: s.char,
         }));
         clearSave();
-        startGame(setup, setupState.length, setupState.speed);
+        startGame(setup, setupState.length, setupState.speed, setupState.mode);
     });
 
     $('modal-close').addEventListener('click', closeModal);
@@ -1341,7 +1362,10 @@ function initUI() {
         build: () => { const p = human(); if (p) afterAction(actBuild(p)); },
         end: () => { if (human()) { Sound.play('click'); endTurn(); } },
     };
-    document.querySelectorAll('#actions .act').forEach(btn => btn.addEventListener('click', () => handlers[btn.dataset.act]()));
+    document.querySelectorAll('#actions .act').forEach(btn => btn.addEventListener('click', () => {
+        if (human()) track(btn.dataset.act);
+        handlers[btn.dataset.act]();
+    }));
 
     document.addEventListener('keydown', e => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.metaKey || e.ctrlKey) return;

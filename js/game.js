@@ -174,7 +174,7 @@ function ownedBunker(p) {
 
 // ===== SETUP =====
 
-function newGame(setup, length, speed) {
+function newGame(setup, length, speed, mode) {
     const range = { short: [8, 11], normal: [12, 16], long: [17, 22] }[length] || [12, 16];
     const rates = {};
     const history = {};
@@ -212,19 +212,22 @@ function newGame(setup, length, speed) {
         wealthHistory: [],
         priceHistory: Object.fromEntries(CONTINENT_IDS.map(id => [id, [1]])),
         speed: AI_SPEEDS[speed] ? speed : 'normal',
+        mode: GAME_MODES[mode] ? mode : 'full',
+        metrics: newMetrics(),
         defcon: 5,
         busy: false,
         over: false,
         players: [],
     };
 
-    const freeChars = shuffle(CHARACTER_IDS.filter(id => !setup.some(s => s.char === id)));
+    const allowedChars = CHARACTER_IDS.filter(id => game.mode === 'full' || !BASIC_EXCLUDED_CHARS.includes(id));
+    const freeChars = shuffle(allowedChars.filter(id => !setup.some(s => s.char === id)));
     game.players = setup.map((s, i) => {
         const loc = starts[i % starts.length];
         const c = LOCATIONS[loc].currency;
         const money = { usd: 0, eur: 0, peso: 0, ara: 0, crypto: 0 };
         money[c] = Math.round(CONFIG.startMoneyEUR / rates[c]);
-        const char = CHARACTERS[s.char] ? s.char : freeChars.pop() || rand(CHARACTER_IDS);
+        const char = allowedChars.includes(s.char) ? s.char : freeChars.pop() || rand(allowedChars);
         const resources = { military: 0, food: 0, tech: 0, energy: 0, rare: 0 };
         if (char === 'general') resources.military = 1;
         if (char === 'bauer') resources.food = 2;
@@ -273,8 +276,30 @@ function prepareScene() {
     showHUD();
 }
 
-async function startGame(setup, length, speed) {
-    newGame(setup, length, speed);
+function isBasic() {
+    return game.mode === 'basic';
+}
+
+// ===== PLAYTEST METRICS (Design Thinking: Evaluate) =====
+
+function newMetrics() {
+    return { started: Date.now(), endedAt: null, actions: {}, errors: 0, errorMsgs: {}, helpOpens: 0, tour: 'nicht gezeigt' };
+}
+
+function track(action) {
+    if (!game || !game.metrics) return;
+    game.metrics.actions[action] = (game.metrics.actions[action] || 0) + 1;
+}
+
+function trackError(msg) {
+    if (!game || !game.metrics) return;
+    const key = msg.replace(/[\d'’.,]+/g, '#').slice(0, 90);
+    game.metrics.errors++;
+    game.metrics.errorMsgs[key] = (game.metrics.errorMsgs[key] || 0) + 1;
+}
+
+async function startGame(setup, length, speed, mode) {
+    newGame(setup, length, speed, mode);
     prepareScene();
     const nb = BUNKER_ORDER.filter(id => game.bunkers[id].available).length;
     log(`${game.players.length} Spieler kämpfen um ${nb} ${nb > 1 ? 'Bunkerplätze' : 'Bunkerplatz'}.`, 'info');
@@ -382,6 +407,8 @@ async function resumeGame(saved) {
     game = saved;
     game.busy = false;
     game.laws = game.laws || {};
+    game.mode = game.mode || 'full';
+    game.metrics = game.metrics || newMetrics();
     game.votesDone = game.votesDone || [];
     game.quizUsed = game.quizUsed || [];
     game.players.forEach(p => {
@@ -420,7 +447,7 @@ async function startRound() {
         render();
         await showEventCard(card, target);
         if (card.fx) await card.fx(game, target);
-        if (game.round % CONFIG.referendumEvery === 0) await runReferendum();
+        if (!isBasic() && game.round % CONFIG.referendumEvery === 0) await runReferendum();
     }
     pushHistory();
     updateDefcon();
@@ -614,7 +641,8 @@ function recordWealth() {
 
 // Cards are drawn one ahead so the Ökonomin can see the forecast.
 function pickCard() {
-    const pool = EVENT_CARDS.map((c, i) => i).filter(i => !game.recentCards.includes(EVENT_CARDS[i].title));
+    const pool = EVENT_CARDS.map((c, i) => i).filter(i => !game.recentCards.includes(EVENT_CARDS[i].title)
+        && !(isBasic() && BASIC_EXCLUDED_CARDS.includes(EVENT_CARDS[i].title)));
     const i = rand(pool);
     const card = EVENT_CARDS[i];
     game.recentCards.push(card.title);
@@ -697,6 +725,7 @@ function fail(p, msg) {
     if (!p.isBot) {
         toast(msg, 'bad');
         Sound.play('error');
+        trackError(msg);
     }
     return false;
 }
@@ -782,6 +811,7 @@ function actSell(p, res) {
 async function actSmuggle(p, res) {
     if (!canAct(p)) return false;
     const loc = LOCATIONS[p.location];
+    if (isBasic()) return fail(p, 'Im Einsteiger-Modus gibt es keinen Schwarzmarkt.');
     if (loc.isBunker) return fail(p, 'Hier gibt es keinen Schwarzmarkt.');
     const source = CONTINENT_IDS.find(id => LOCATIONS[id].resource === res);
     const terms = smuggleTerms(p);
@@ -920,6 +950,7 @@ function actInsure(p) {
 
 function actCrypto(p, mode, coins) {
     if (!canAct(p)) return false;
+    if (isBasic()) return fail(p, 'Im Einsteiger-Modus gibt es keine Kryptowährung.');
     if (game.laws.cryptoBan) return fail(p, 'BunkerCoin wurde per Volksabstimmung verboten.');
     const blocked = bankBlocked(p);
     if (blocked) return fail(p, blocked);
@@ -1189,6 +1220,7 @@ function transfer(from, to, x) {
 
 async function actContract(p, target, offer) {
     if (game.over) return false;
+    if (isBasic()) return fail(p, 'Im Einsteiger-Modus gibt es keine Verträge.');
     if (offer.type === 'trade') {
         if (!(offer.give.amount > 0) || !(offer.get.amount > 0)) return fail(p, 'Bitte Mengen angeben.');
         if (!holds(p, offer.give)) return fail(p, 'Du besitzt nicht, was du anbietest.');
@@ -1258,6 +1290,7 @@ function fateOf(p) {
 async function endGame() {
     game.over = true;
     game.busy = true;
+    game.metrics.endedAt = Date.now();
     clearSave();
     closeModal();
     hideTooltip();
