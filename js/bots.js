@@ -24,8 +24,29 @@ function botRaidTarget(p) {
     return BUNKER_ORDER.filter(id => {
         const b = game.bunkers[id];
         if (!b.available || b.owner === null || b.owner === p.id) return false;
-        return combatBonus(p) >= bunkerDefense(b);
+        return combatBonus(p) >= bunkerDefense(id);
     })[0] || null;
+}
+
+// Interviews: the closer someone is to winning, the more the others gang up on them.
+function botHuntLeader(p) {
+    const leader = game.leaderId !== null && game.leaderId !== undefined ? game.players[game.leaderId] : null;
+    if (!leader || leader.id === p.id || pactBetween(p, leader)) return null;
+    if (game.roundMods.noAttacks || p.attackedThisTurn || p.resources.military < 1) return null;
+
+    if (leader.location === p.location && Object.values(leader.resources).some(v => v > 0)) {
+        const inBunker = ownedBunker(leader) === leader.location && game.bunkers[leader.location].completed;
+        if (combatBonus(p) + 1 >= combatBonus(leader) + (inBunker ? 2 : 0)) return { type: 'attack', target: leader };
+    }
+    const site = ownedBunker(leader);
+    if (!site) return null;
+    const b = game.bunkers[site];
+    const raidable = b.completed ? !ownedBunker(p) : b.sabotagedRound !== game.round;
+    if (!raidable || combatBonus(p) < bunkerDefense(site)) return null;
+    if (p.location === site) return { type: 'raid' };
+    const farFromOwnGoal = !ownedBunker(p) && bunkerNeeds(p).missingAfterWild >= 3;
+    if (farFromOwnGoal && ADJACENCY[p.location].includes(site) && fiatEUR(p) >= travelCostEUR(p, site)) return { type: 'go', dest: site };
+    return null;
 }
 
 async function botGoTo(p, dest) {
@@ -48,6 +69,13 @@ async function botStep(p) {
     const loc = LOCATIONS[p.location];
     const own = ownedBunker(p);
 
+    const hunt = botHuntLeader(p);
+    if (hunt) {
+        if (hunt.type === 'attack') return actAttack(p, hunt.target);
+        if (hunt.type === 'raid') return actRaidBunker(p);
+        if (hunt.type === 'go' && Math.random() < 0.6) return botGoTo(p, hunt.dest);
+    }
+
     // Opportunistic robbery: only against clearly weaker, non-pact players.
     if (game.round >= 3 && !p.attackedThisTurn && !game.roundMods.noAttacks && p.resources.military >= 2) {
         const victim = game.players.find(o => o.id !== p.id && o.location === p.location && !pactBetween(p, o)
@@ -59,8 +87,11 @@ async function botStep(p) {
     if (own) {
         const b = game.bunkers[own];
         if (p.location !== own) return botGoTo(p, own);
-        if (!b.completed) return actBuild(p);
+        if (!b.completed && !p.builtThisTurn) return actBuild(p);
+        const canFortify = (b.fort || 0) < CONFIG.maxFortify && ['energy', 'military', 'rare'].some(k => p.resources[k] > 0);
+        if (canFortify) return actFortify(p);
         if (p.debt > 0 && fiatEUR(p) > 1) return actRepay(p);
+        if (!p.studiedThisTurn) return actStudy(p);
         return false;
     }
 

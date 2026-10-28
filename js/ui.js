@@ -69,8 +69,10 @@ function showHUD() {
 function render() {
     if (!game || game.over) return;
     const p = cp();
+    updateLeader();
     renderTop(p);
     renderPlayerCard(p);
+    renderNextCard();
     renderMarket();
     renderLists();
     renderActions(p);
@@ -102,13 +104,22 @@ function adviceFor(p) {
     const loc = LOCATIONS[p.location];
     if (own) {
         const b = game.bunkers[own];
-        if (!b.completed) {
-            return p.location === own ? `Baue weiter am Bunker (${b.progress}/${stepsFor(p)}) – Taste 9.`
-                : `Reise zurück zu deiner Baustelle in ${LOCATIONS[own].name}!`;
+        const canFortify = (b.fort || 0) < CONFIG.maxFortify && ['energy', 'military', 'rare'].some(k => p.resources[k] > 0);
+        const target = isLeader(p) ? '🎯 Du bist Spitzenreiter – alle haben es auf dich abgesehen! ' : '';
+        if (p.location !== own) {
+            return b.completed ? `⚠ Reise SOFORT zurück in deinen Bunker in ${LOCATIONS[own].name}!` : `Reise zurück zu deiner Baustelle in ${LOCATIONS[own].name}!`;
         }
-        if (p.location !== own) return `⚠ Reise SOFORT zurück in deinen Bunker in ${LOCATIONS[own].name}!`;
+        if (!b.completed && !p.builtThisTurn) return `${target}Baue weiter am Bunker (${b.progress}/${stepsFor(p)}) – Taste 9. Pro Zug ist nur 1 Bauschritt erlaubt.`;
+        if (canFortify) return `${target}Befestige deinen Bunker (Taste F) mit Energie, Militär oder Rohstoffen – jede Stufe gibt +1 Verteidigung.`;
         if (p.debt > 0) return 'Zahle deine Schulden an der Bank zurück – sonst pfändet sie deinen Bunker!';
-        return 'Du bist in Sicherheit. Bleib hier und beende deinen Zug. Mehr Militär schützt vor Angriffen.';
+        if (!b.completed) return `${target}Diesen Zug kannst du nicht weiterbauen. Verdiene Geld mit Lernen (Q) und kaufe Energie oder Militär zum Befestigen.`;
+        return `${target}Du bist im Bunker. Bleib hier – Befestigung und Militär schützen dich vor einer Übernahme.`;
+    }
+    if (game.leaderId !== null && game.leaderId !== undefined && game.leaderId !== p.id) {
+        const leader = game.players[game.leaderId];
+        const site = ownedBunker(leader);
+        if (site && p.location === site && p.resources.military > 0) return `🎯 ${leader.name} ist Spitzenreiter! Sabotiere die Baustelle (Taste 7) und kassiere ${CONFIG.bountyEUR} € Kopfgeld.`;
+        if (leader.location === p.location && p.resources.military > 0) return `🎯 ${leader.name} ist hier und Spitzenreiter! Ein erfolgreicher Angriff (Taste 7) bringt ${CONFIG.bountyEUR} € Kopfgeld.`;
     }
     if (p.debt > 0 && game.defcon <= 2) return 'Der Krieg naht! Zahle deine Schulden zurück, sonst verlierst du den Bunker.';
     const needed = botNeededResources(p);
@@ -153,7 +164,8 @@ function renderPlayerCard(p) {
     const money = ['usd', 'eur', 'peso', 'ara', 'crypto'].map(c =>
         `<div class="money ${p.money[c] <= 0 ? 'zero' : ''}">${curTag(c)}<span>${fmt(p.money[c])}</span></div>`).join('');
 
-    const req = reqFor(p);
+    const site = loc.isBunker && !ownedBunker(p) ? p.location : null;
+    const req = reqFor(p, site);
     const res = Object.keys(RESOURCES).map(k => {
         const r = RESOURCES[k];
         const need = req[k];
@@ -172,21 +184,23 @@ function renderPlayerCard(p) {
         const steps = stepsFor(p);
         bunker = `<div class="bunker-progress">🛖 <b>Bunker ${LOCATIONS[own].name}</b> – ${b.completed ? '<span style="color:#86efac">FERTIG</span>' : `${b.progress}/${steps}`}
             <div class="bar"><div style="width:${Math.min(100, (b.progress / steps) * 100)}%"></div></div>
+            <div class="bp-def">🛡️ Verteidigung ${bunkerDefense(own)} · 🧱 Befestigung ${b.fort || 0}/${CONFIG.maxFortify}${p.builtThisTurn && !b.completed ? ' · diesen Zug schon gebaut' : ''}</div>
             ${b.completed && p.location !== own ? '<div style="color:#fca5a5;margin-top:6px">⚠ Du bist nicht im Bunker!</div>' : ''}
             ${p.debt > 0 ? '<div style="color:#fca5a5;margin-top:6px">⚠ Mit Schulden pfändet die Bank deinen Bunker!</div>' : ''}</div>`;
     } else {
-        const { missingAfterWild } = bunkerNeeds(p);
+        const { missingAfterWild } = bunkerNeeds(p, site);
         bunker = `<div class="bunker-progress">${missingAfterWild === 0
             ? '✅ Genug Ressourcen! Reise zu einem freien Bunker und baue ihn.'
-            : `Noch <b>${missingAfterWild}</b> Ressourcen bis zum Bunker (💎 = Joker).`}</div>`;
+            : `Noch <b>${missingAfterWild}</b> Ressourcen bis zum Bunker (💎 = Joker).`}${site ? `<div class="bp-def">${BUNKER_TRAITS[site].icon} ${esc(BUNKER_TRAITS[site].label)}</div>` : ''}</div>`;
     }
 
     let extra = '';
+    if (isLeader(p)) extra += `<div class="leader-warn">🎯 <b>Du bist Spitzenreiter!</b> Wer dich beraubt oder deine Baustelle sabotiert, erhält ${CONFIG.bountyEUR} € Kopfgeld.</div>`;
     if (has(p, 'oekonomin')) {
-        const f = forecast();
+        const f = forecast(1);
         if (f) {
             const t = targetName(f.target);
-            extra += `<div class="forecast">📊 <b>Prognose nächste Runde:</b> ${f.card.icon} ${esc(f.card.title)}${t ? ` (${esc(t)})` : ''}</div>`;
+            extra += `<div class="forecast">📊 <b>Prognose in 2 Runden:</b> ${f.card.icon} ${esc(f.card.title)}${t ? ` (${esc(t)})` : ''}</div>`;
         }
     }
     if (!p.isBot) extra += `<div class="advisor"><span class="adv-icon">💡</span><span>${esc(adviceFor(p))}</span></div>`;
@@ -236,6 +250,19 @@ function trend(hist) {
     return `<span class="fx-chg ${chg >= 0 ? 'down' : 'up'}">${chg >= 0 ? '▲' : '▼'}${Math.abs(chg).toFixed(0)}%</span>`;
 }
 
+function renderNextCard() {
+    const f = forecast(0);
+    if (!f) {
+        $('next-card').innerHTML = '';
+        return;
+    }
+    const t = targetName(f.target);
+    $('next-card').innerHTML = `<div class="next-card ${f.card.kind}" title="${esc(f.card.text(f.target))}">
+        <span class="nc-icon">${f.card.icon}</span>
+        <div><div class="nc-title">${esc(f.card.title)}${t ? ` <span class="muted">(${esc(t)})</span>` : ''}</div>
+        <div class="nc-text">${esc(f.card.text(f.target))}</div></div></div>`;
+}
+
 function renderMarket() {
     const rows = ['usd', 'peso', 'ara', 'crypto'].map(c => {
         const hist = game.history[c];
@@ -278,18 +305,21 @@ function renderLists() {
             if (b.owner === null) st = '<span class="st" style="color:#c084fc">FREI</span>';
             else {
                 const o = game.players[b.owner];
-                st = `<span class="st"><span class="dot-inline" style="background:${o.color}"></span>${esc(o.name)} ${b.completed ? '✔' : `${b.progress}/${stepsOfBunker(b)}`}</span>`;
+                st = `<span class="st"><span class="dot-inline" style="background:${o.color}"></span>${esc(o.name)} ${b.completed ? '✔' : `${b.progress}/${stepsOfBunker(b)}`}${b.fort ? ` 🧱${b.fort}` : ''}</span>`;
             }
         }
-        return `<div class="bl-row">🛖 ${LOCATIONS[id].name}${st}</div>`;
+        const trait = BUNKER_TRAITS[id];
+        return `<div class="bl-row bl-col"><div class="bl-top">🛖 ${LOCATIONS[id].name}${st}</div><div class="bl-trait">${trait.icon} ${esc(trait.label)}</div></div>`;
     }).join('');
 
     $('player-list').innerHTML = game.players.map(p => {
         const resCount = Object.values(p.resources).reduce((a, b) => a + b, 0);
-        return `<div class="pl-row ${p.id === game.cur ? 'active' : ''}" title="${esc(charOf(p).name)}: ${esc(charOf(p).power)}">
+        const leader = isLeader(p);
+        const detail = leader ? `<br><span class="pl-leader-res">${Object.keys(RESOURCES).map(k => `${RESOURCES[k].icon}${p.resources[k]}`).join(' ')}</span>` : '';
+        return `<div class="pl-row ${p.id === game.cur ? 'active' : ''} ${leader ? 'leader' : ''}" title="${esc(charOf(p).name)}: ${esc(charOf(p).power)}">
             <span class="dot" style="background:${p.color}"></span>
-            <span>${charOf(p).icon} ${esc(p.name)}${p.isBot ? ' 🤖' : ''}</span>
-            <span class="pl-meta">${LOCATIONS[p.location].name}<br>${fmt(fiatEUR(p))}€ · ${resCount} Res. · ⚔${p.resources.military}</span></div>`;
+            <span>${leader ? '🎯 ' : ''}${charOf(p).icon} ${esc(p.name)}${p.isBot ? ' 🤖' : ''}</span>
+            <span class="pl-meta">${LOCATIONS[p.location].name}<br>${fmt(fiatEUR(p))}€ · ${resCount} Res. · ⚔${p.resources.military}${detail}</span></div>`;
     }).join('');
 }
 
@@ -310,7 +340,8 @@ function renderActions(p) {
         eat: p.resources.food < 1 || p.foodBoosts >= maxFoodBoosts(p),
         attack: noAP || p.resources.military < 1 || p.attackedThisTurn || game.roundMods.noAttacks || (!others.length && !raidable),
         contract: game.players.length < 2,
-        build: noAP || !loc.isBunker || !b.available || b.completed || (b.owner !== null && b.owner !== p.id),
+        build: noAP || !loc.isBunker || !b.available || b.completed || p.builtThisTurn || (b.owner !== null && b.owner !== p.id),
+        fortify: noAP || !b || b.owner !== p.id || (b.fort || 0) >= CONFIG.maxFortify || !['energy', 'military', 'rare'].some(k => p.resources[k] > 0),
         end: false,
     };
     document.querySelectorAll('#actions .act').forEach(btn => {
@@ -347,7 +378,8 @@ function onGlobeHover(locId, x, y) {
         if (loc.isBunker) {
             const b = game.bunkers[locId];
             html += b.owner === null ? 'Bunker: <b style="color:#c084fc">frei</b>' :
-                `Bunker von <b>${esc(game.players[b.owner].name)}</b> ${b.completed ? '✔ fertig' : `(${b.progress}/${stepsOfBunker(b)})`}`;
+                `Bunker von <b>${esc(game.players[b.owner].name)}</b> ${b.completed ? '✔ fertig' : `(${b.progress}/${stepsOfBunker(b)})`}<br>🛡️ Verteidigung ${bunkerDefense(locId)}${b.fort ? ` (🧱 +${b.fort})` : ''}`;
+            if (BUNKER_TRAITS[locId]) html += `<br>${BUNKER_TRAITS[locId].icon} ${esc(BUNKER_TRAITS[locId].label)}`;
         } else {
             html += `Währung: <b>${CURRENCIES[loc.currency].name}</b><br>Ressource: ${RESOURCES[loc.resource].icon} <b>${RESOURCES[loc.resource].name}</b> – ${fmt(priceLocal(locId))} ${CURRENCIES[loc.currency].name}`;
             if (isEmbargoed(p, locId)) html += '<br><b style="color:#f87171">🚫 Embargo!</b>';
@@ -433,7 +465,7 @@ function openTravel() {
         const cost = travelCostEUR(p, id);
         const near = ADJACENCY[p.location].includes(id);
         const crates = game.crates.filter(c => c.loc === id).length;
-        const sub = loc.isBunker ? (locked ? 'gesperrt' : 'Bunker-Standort') : `${CURRENCIES[loc.currency].name} · ${RESOURCES[loc.resource].name}${crates ? ` · 💎×${crates}` : ''}`;
+        const sub = loc.isBunker ? (locked ? 'gesperrt' : `${BUNKER_TRAITS[id].icon} ${BUNKER_TRAITS[id].label}`) :`${CURRENCIES[loc.currency].name} · ${RESOURCES[loc.resource].name}${crates ? ` · 💎×${crates}` : ''}`;
         return option(loc.isBunker ? '🛖' : '🌍', loc.name, `${near ? 'Nahe' : 'Weit'} · ${sub}`, `≈${cost} €`, `data-to="${id}"`, locked || fiatEUR(p) < cost);
     }).join('');
     openModal('✈️ Wohin reisen?', `<p class="muted" style="margin-bottom:10px">Tipp: Du kannst auch direkt auf die Weltkugel klicken. Gelb gestrichelte Routen sind nah und billig. Technik (−30%) und Energie (−20%) machen Reisen günstiger.</p><div class="m-options">${html}</div>`);
@@ -586,9 +618,9 @@ function openAttack() {
         const o = game.players[b.owner];
         html += option('💣', b.completed ? `Bunker von ${esc(o.name)} stürmen` : `Baustelle von ${esc(o.name)} sabotieren`,
             b.completed ? 'Gewinnst du, gehört der Bunker DIR!' : 'Gewinnst du, verliert der Bau 1 Fortschritt.',
-            `⚔ ${combatBonus(p)} vs ${bunkerDefense(b)}+🎲`, 'data-raid="1"');
+            `⚔ ${combatBonus(p)} vs ${bunkerDefense(p.location)}+🎲`, 'data-raid="1"', !b.completed && b.sabotagedRound === game.round);
     }
-    openModal('⚔️ Angriff', `<p class="muted" style="margin-bottom:10px">Würfel (1–6) + deine Kampfkraft gegen Würfel + Kampfkraft des Gegners. Verlierst du, verlierst du 1 Militär.</p><div class="m-options">${html || '<p>Niemand hier.</p>'}</div>`);
+    openModal('⚔️ Angriff', `<p class="muted" style="margin-bottom:10px">Würfel (1–${CONFIG.combatDie}) + deine Kampfkraft gegen Würfel + Kampfkraft des Gegners – wer mehr Militär hat, gewinnt fast immer. Verlierst du, verlierst du 1 Militär. 🎯 Ein Sieg gegen den Spitzenreiter bringt ${CONFIG.bountyEUR} € Kopfgeld.</p><div class="m-options">${html || '<p>Niemand hier.</p>'}</div>`);
     bindModal('[data-target]', el => { closeModal(); afterAction(actAttack(p, game.players[Number(el.dataset.target)])); });
     bindModal('[data-raid]', () => { closeModal(); afterAction(actRaidBunker(p)); });
 }
@@ -661,6 +693,7 @@ function helpHTML() {
         <p>Sitze beim Ausbruch des Atomkriegs in deinem <b>fertigen Bunker</b> – ohne Schulden. Es gibt nur halb so viele Bunker wie Spieler. Wann der Krieg genau ausbricht, weiss niemand; die DEFCON-Anzeige zeigt, wie nah er ist.</p>
         <h4>🔁 Ablauf</h4>
         <p>Jede Runde zieht eine Ereigniskarte (Inflation, Crash, Embargo, Raketeneinschlag …). Dann ist jeder Spieler einmal am Zug und hat <b>${CONFIG.actionsPerTurn} Aktionspunkte (AP)</b>. Zu Beginn jeder Runde erhalten alle ${CONFIG.incomeEUR} € Einkommen in der Währung ihres Standorts. Die Sonne wandert jede Runde weiter – auf der Nachtseite leuchten die Städte.</p>
+        <p>📰 Die Ereigniskarte der <b>nächsten</b> Runde ist für alle sichtbar (rechts oben). So könnt ihr vorausplanen.</p>
         <h4>🌍 Kontinente</h4>
         <table><tr><th>Kontinent</th><th>Währung</th><th>Ressource</th><th>Effekt</th></tr>
             <tr><td>Nordamerika</td><td>USD</td><td>⚔️ Militär</td><td>Angriff & Verteidigung</td></tr>
@@ -669,7 +702,14 @@ function helpHTML() {
             <tr><td>Afrika</td><td>ARA</td><td>⚡ Energie</td><td>Reisen −20%</td></tr>
             <tr><td>überall zufällig</td><td>–</td><td>💎 Rohstoffe</td><td>Joker für jede Bunker-Ressource</td></tr></table>
         <h4>🛖 Bunker bauen</h4>
-        <p>Benötigt: ${req.food}× Lebensmittel, ${req.tech}× Technik, ${req.energy}× Energie, ${req.military}× Militär (fehlende können durch 💎 ersetzt werden). Reise zu einem freien Bunker-Standort und baue ${CONFIG.bunkerBuildSteps}× (je 1 AP). Danach: <b>bleib dort!</b></p>
+        <p>Benötigt: ${req.food}× Lebensmittel, ${req.tech}× Technik, ${req.energy}× Energie, ${req.military}× Militär (fehlende können durch 💎 ersetzt werden). Reise zu einem freien Bunker-Standort und baue ${CONFIG.bunkerBuildSteps}× (je 1 AP, aber <b>höchstens 1 Bauschritt pro Zug</b>). Danach: <b>bleib dort!</b></p>
+        <table><tr><th>Standort</th><th>Eigenschaft</th></tr>
+            ${BUNKER_ORDER.map(id => `<tr><td>${BUNKER_TRAITS[id].icon} ${LOCATIONS[id].name}</td><td>${BUNKER_TRAITS[id].label}</td></tr>`).join('')}</table>
+        <h4>🎯 Spitzenreiter und Kopfgeld</h4>
+        <p>Wer am nächsten am Ziel ist, wird zum <b>Spitzenreiter</b>: Er ist auf dem Globus mit einer Zielscheibe markiert, und alle sehen seine Ressourcen. Wer ihn erfolgreich beraubt, seine Baustelle sabotiert oder seinen Bunker stürmt, erhält <b>${CONFIG.bountyEUR} € Kopfgeld</b>. Auch die KI-Spieler jagen den Spitzenreiter. Eine Baustelle kann pro Runde nur einmal sabotiert werden.</p>
+        <p><b>🧱 Befestigen (Taste F):</b> Gib 1 Energie, 1 Militär oder 1 Rohstoff ab, um deinen Bunker zu verstärken (+1 Verteidigung, max. +${CONFIG.maxFortify}). Gutes Verteidigen ist genauso wichtig wie schnelles Bauen.</p>
+        <h4>⭐ Punkte am Spielende</h4>
+        <p>Überleben: ${CONFIG.scoreSurvive} Punkte · pro Bauschritt: ${CONFIG.scorePerBuildStep} Punkte · Vermögen: 1 Punkt pro ${CONFIG.scoreEURPerPoint} €. So zahlt sich gutes Spielen auch bei einer Niederlage aus.</p>
         <h4>🎭 Charaktere</h4>
         <table>${chars}</table>
         <h4>🎮 Aktionen (je 1 AP) – Tasten 1 bis 0</h4>
@@ -681,9 +721,9 @@ function helpHTML() {
             <li><b>4 Bank</b> – Geld wechseln (${CONFIG.exchangeFee * 100}% Gebühr), Kredit aufnehmen/zurückzahlen, Versicherung.</li>
             <li><b>5 Krypto</b> – BunkerCoin kaufen/verkaufen. Danach ${CONFIG.cryptoLockTurns} Züge Wechselsperre!</li>
             <li><b>6 Essen</b> (0 AP) – 1 Lebensmittel für +1 AP, max. 2× pro Zug.</li>
-            <li><b>7 Angriff</b> – Würfel + Militär. Gewinner raubt Ressourcen. Fremde Bunker können sabotiert oder sogar gestürmt werden!</li>
+            <li><b>7 Angriff</b> – Würfel (1–${CONFIG.combatDie}) + Militär. Weil der Würfel klein ist, entscheidet vor allem das Militär. Gewinner raubt Ressourcen. Fremde Bunker können sabotiert oder sogar gestürmt werden!</li>
             <li><b>8 Vertrag</b> (0 AP) – Tauschhandel oder Nichtangriffspakt. Vertragsbruch kostet ${CONFIG.pactPenaltyEUR} € Strafe.</li>
-            <li><b>9 Bunker bauen</b> · <b>0 Zug beenden</b> · <b>M</b> Ton an/aus · <b>Esc</b> Fenster schliessen</li>
+            <li><b>9 Bunker bauen</b> · <b>F Befestigen</b> · <b>0 Zug beenden</b> · <b>M</b> Ton an/aus · <b>Esc</b> Fenster schliessen</li>
         </ul>
         <h4>🎚️ Einsteiger- oder Komplett-Modus</h4>
         <p>Im <b>Einsteiger-Modus</b> fallen Krypto, Verträge, Schwarzmarkt und Volksabstimmungen weg. So versteht man das Spiel in wenigen Minuten und schafft eine Runde in einer Schulstunde. Der <b>Komplett-Modus</b> enthält alle Mechaniken.</p>
@@ -848,10 +888,10 @@ const TOUR = [
     { sel: '#player-card .advisor', place: 'right', text: 'Der Berater 💡 sagt dir jederzeit, was als Nächstes sinnvoll ist. Wenn du unsicher bist: hier schauen!' },
     { sel: '#player-card .money-list', place: 'right', text: 'Dein Geld. Jeder Kontinent hat eine eigene Währung – am besten kaufst du in der Lokalwährung. Wechseln kannst du an der Bank.' },
     { sel: '#res-box', place: 'right', text: 'Sammle diese Ressourcen. Hast du alles, reist du zu einem freien Bunker und baust ihn. 💎 Rohstoffe sind Joker.' },
-    { sel: '#actions', place: 'above', text: 'Deine Aktionen. Die meisten kosten 1 Aktionspunkt. Die Tasten 1–9, Q und 0 funktionieren auch.' },
+    { sel: '#actions', place: 'above', text: 'Deine Aktionen. Die meisten kosten 1 Aktionspunkt. Die Tasten 1–9, Q, F und 0 funktionieren auch. Pro Zug ist nur 1 Bauschritt erlaubt – befestige deinen Bunker, denn der Spitzenreiter 🎯 wird von allen gejagt!' },
     { sel: '#tb-ap', place: 'below', text: 'Deine Aktionspunkte. Sind sie aufgebraucht, beendest du deinen Zug (Taste 0).' },
     { sel: '#defcon', place: 'below', text: 'DEFCON: Je weiter rechts, desto näher der Atomkrieg. Wann genau er ausbricht, weiss niemand!' },
-    { sel: '#right-panel', place: 'left', text: 'Der Markt: Wechselkurse, Preise, Gesetze und wer welchen Bunker besitzt.' },
+    { sel: '#right-panel', place: 'left', text: 'Ganz oben siehst du die Ereigniskarte der nächsten Runde – plane voraus! Darunter: Wechselkurse, Preise, Gesetze und die Bunker mit ihren Eigenschaften.' },
     { sel: 'globe', place: 'right', text: 'Zum Reisen klickst du einfach auf einen Ort der Weltkugel. Gelb gestrichelte Routen sind nah und billig. Viel Glück! ☢' },
 ];
 
@@ -943,9 +983,9 @@ function renderHall() {
     const box = $('hall');
     box.classList.toggle('hidden', !hall.length);
     if (!hall.length) return;
-    box.innerHTML = `<div class="hall-title">🏆 Ruhmeshalle – die reichsten Überlebenden</div>` + hall.slice(0, 5).map((h, i) => {
+    box.innerHTML = `<div class="hall-title">🏆 Ruhmeshalle – die besten Überlebenden</div>` + hall.slice(0, 5).map((h, i) => {
         const c = CHARACTERS[h.char];
-        return `<div class="hall-row"><span class="hall-rank">${i + 1}</span><span>${c ? c.icon : ''} ${esc(h.name)}${h.bot ? ' 🤖' : ''}</span><span class="hall-meta">${fmt(h.wealth)} € · ${h.players} Spieler · ${esc(h.date)}</span></div>`;
+        return `<div class="hall-row"><span class="hall-rank">${i + 1}</span><span>${c ? c.icon : ''} ${esc(h.name)}${h.bot ? ' 🤖' : ''}</span><span class="hall-meta">${typeof h.score === 'number' ? `⭐ ${fmt(h.score)} Pkt. · ` : ''}${fmt(h.wealth)} € · ${h.players} Spieler · ${esc(h.date)}</span></div>`;
     }).join('');
 }
 
@@ -1016,7 +1056,7 @@ function showDice(title, a, b, result, kind) {
         $('dice-overlay').classList.add('active');
         Sound.play('dice');
         const faces = document.querySelectorAll('#dice-overlay .dice-face');
-        const spin = setInterval(() => faces.forEach(f => { f.textContent = randInt(1, 6); }), 70);
+        const spin = setInterval(() => faces.forEach(f => { f.textContent = randInt(1, CONFIG.combatDie); }), 70);
         const fast = game.speed === 'fast' && game.players[game.cur].isBot;
         setTimeout(() => {
             clearInterval(spin);
@@ -1062,6 +1102,8 @@ const AWARDS = [
     { icon: '🕶️', title: 'Pate der Unterwelt', desc: 'Meiste Schmuggelgeschäfte', val: p => p.stats.smuggled },
     { icon: '🎰', title: 'Zocker', desc: 'Meiste Krypto-Geschäfte', val: p => p.stats.crypto },
     { icon: '🤓', title: 'Streber', desc: 'Meiste richtige Quizantworten', val: p => p.stats.quizRight || 0 },
+    { icon: '🎯', title: 'Kopfgeldjäger', desc: 'Meiste Treffer gegen den Spitzenreiter', val: p => p.stats.bounties || 0 },
+    { icon: '🧱', title: 'Baumeister', desc: 'Meiste Befestigungen', val: p => p.stats.fortified || 0 },
     { icon: '💳', title: 'Schuldenkönig', desc: 'Meiste Zinsen bezahlt', val: p => p.stats.interest, money: true },
     { icon: '⚖️', title: 'Vertragsbrecher', desc: 'Meiste Vertragsbrüche', val: p => p.stats.breaches },
     { icon: '🏦', title: 'Liebling der Bank', desc: 'Meiste Gebühren bezahlt', val: p => p.stats.fees, money: true },
@@ -1184,17 +1226,20 @@ function showEndScreen(fates) {
     const alive = fates.filter(f => f.alive);
     $('end-title').textContent = alive.length ? `${alive.map(f => f.p.name).join(' & ')} überleb${alive.length > 1 ? 'en' : 't'}!` : 'Niemand hat überlebt.';
     $('end-sub').textContent = `Der Atomkrieg brach nach Runde ${game.doomsdayRound} aus. ${alive.length ? 'Die Tür des Bunkers schliesst sich ...' : 'Die Erde gehört jetzt den Kakerlaken.'}`;
-    fates.sort((x, y) => (y.alive - x.alive) || (wealthEUR(y.p) - wealthEUR(x.p)));
+    fates.sort((x, y) => y.score.total - x.score.total);
     $('end-results').innerHTML = fates.map((f, i) => {
         const s = f.p.stats;
+        const sc = f.score;
         return `<div class="result ${f.alive ? 'alive' : 'dead'}">
             <div class="rank">${i + 1}</div>
             <div class="pc-avatar" style="background:${f.p.color};color:${f.p.color};width:38px;height:38px"><span>${charOf(f.p).icon}</span></div>
             <div class="r-main"><div class="r-name">${esc(f.p.name)}${f.p.isBot ? ' 🤖' : ''} <span class="muted">· ${charOf(f.p).name}</span></div>
                 <div class="r-why">${esc(f.why)}</div>
-                <div class="r-stats">Vermögen ≈${fmt(wealthEUR(f.p))} € · ${s.bought} gekauft · ${s.worked}× gearbeitet · Zinsen ${fmt(s.interest)} € · Gebühren ${fmt(s.fees)} € · Kämpfe ${s.won}:${s.lost} · Schmuggel ${s.smuggled} (${s.caught} erwischt)</div></div>
+                <div class="r-stats">Vermögen ≈${fmt(wealthEUR(f.p))} € · ${s.bought} gekauft · ${s.worked}× gearbeitet · Zinsen ${fmt(s.interest)} € · Gebühren ${fmt(s.fees)} € · Kämpfe ${s.won}:${s.lost} · Kopfgeld ${s.bounties || 0}× · Schmuggel ${s.smuggled} (${s.caught} erwischt)</div></div>
+            <div class="r-score"><div class="r-points">${fmt(sc.total)}</div><div class="r-points-label">Punkte</div>
+                <div class="r-points-parts">${sc.survive ? `🛖 ${fmt(sc.survive)} · ` : ''}🧱 ${fmt(sc.bunker)} · 💰 ${fmt(sc.wealth)}</div></div>
             <div class="r-badge">${f.alive ? '🛖' : f.seized ? '🏦' : '☠️'}</div></div>`;
-    }).join('');
+    }).join('') + `<p class="score-note">Punkte: Überleben ${CONFIG.scoreSurvive} · pro Bauschritt ${CONFIG.scorePerBuildStep} · 1 Punkt pro ${CONFIG.scoreEURPerPoint} € Vermögen</p>`;
     renderAwards();
     if (game.hallEntries && game.hallEntries.length) {
         $('end-awards').insertAdjacentHTML('afterbegin', `<div class="hall-new">🏆 Neu in der Ruhmeshalle: ${game.hallEntries.map(h => esc(h.name)).join(', ')}</div>`);
@@ -1360,6 +1405,7 @@ function initUI() {
         attack: openAttack,
         contract: openContract,
         build: () => { const p = human(); if (p) afterAction(actBuild(p)); },
+        fortify: () => { const p = human(); if (p) afterAction(actFortify(p)); },
         end: () => { if (human()) { Sound.play('click'); endTurn(); } },
     };
     document.querySelectorAll('#actions .act').forEach(btn => btn.addEventListener('click', () => {

@@ -26,6 +26,20 @@ const CONFIG = {
     studyEUR: 240,
     quizSeconds: 20,
     referendumEvery: 3,
+    combatDie: 3,
+    bountyEUR: 150,
+    maxFortify: 3,
+    leaderMinScore: 6,
+    scoreSurvive: 1000,
+    scorePerBuildStep: 100,
+    scoreEURPerPoint: 10,
+};
+
+// Each bunker site plays differently so choosing one is a strategic decision.
+const BUNKER_TRAITS = {
+    alpen: { defense: -1, energyDiscount: 0, icon: '🏔️', label: 'Nah, aber schwach verteidigt (−1 Verteidigung)' },
+    neuseeland: { defense: 2, energyDiscount: 0, icon: '🪨', label: 'Weit weg, aber Felsenbunker (+2 Verteidigung)' },
+    spitzbergen: { defense: 0, energyDiscount: 1, icon: '🧊', label: 'Permafrost: braucht 1 Energie weniger' },
 };
 
 // Quiz for the "Weiterbildung" action. `a` is the index of the correct answer.
@@ -201,7 +215,7 @@ const DESIGN_PHASES = [
     },
     {
         name: 'Synthesize', de: 'Informationen interpretieren', color: '#fbbf24', group: 'right',
-        points: ['Empathy Map und Affinity Diagram aus Interviews und Feedback', 'Insight: Begriffe wie Inflation bleiben abstrakt, solange man sie nicht selbst spürt', 'HMW: Wie könnten wir die Regeln in unter 3 Minuten vermitteln?'],
+        points: ['Empathy Map und Affinity Diagram aus der Befragung', 'Insight: Können soll mehr zählen als Glück, sonst hat das Spiel keinen Sinn', 'HMW: Wie könnten wir den Führenden angreifbar machen, ohne dass er chancenlos ist?'],
     },
     {
         name: 'Ideate', de: 'Ideen entwickeln', color: '#34d399', group: 'things',
@@ -209,7 +223,7 @@ const DESIGN_PHASES = [
     },
     {
         name: 'Prototype & Evaluate', de: 'Bauen und testen', color: '#94a3b8', group: 'things',
-        points: ['5 Prototypen: von der 2D-Karte zum 3D-Globus', 'Automatisierte Testspiele mit 4–6 KI-Spielern', 'Testrunden mit Menschen → Feedback → Verbesserung'],
+        points: ['6 Prototypen: von der 2D-Karte zum 3D-Globus', 'Automatisierte Testspiele mit 4–6 KI-Spielern', 'Befragung → Prototyp 6: weniger Glück, mehr Strategie, Spitzenreiter angreifbar'],
     },
     {
         name: 'Build', de: 'Umsetzen', color: '#e2e8f0', group: 'things',
@@ -223,6 +237,7 @@ const ITERATIONS = [
     { v: 'Prototyp 3', date: '25.09.2026', text: 'Charaktere, Tag/Nacht, Berater, Autosave, Endbildschirm mit Diagramm. Test: Spielerfarben für Farbenblinde schlecht unterscheidbar → neue Farben.' },
     { v: 'Prototyp 4', date: '25.09.2026', text: 'Volksabstimmung, Quiz, geführte Tour. Test: Start oft auf der dunklen Nachtseite → Sonne startet über dem ersten Spieler. Langsame Computer → automatische Grafikanpassung.' },
     { v: 'Prototyp 5', date: '21.10.2026', text: 'Design Thinking: Einsteiger-Modus für kurze Runden, Feedback-Formular und Testauswertung im Spiel, Making-of.' },
+    { v: 'Prototyp 6', date: '28.10.2026', text: 'Aus der Befragung (hoher Skillcap, strategisch, Führender angreifbar): Würfel 1–3, nächste Ereigniskarte für alle sichtbar, Bunker mit Eigenschaften, Punktesystem, 1 Bauschritt pro Zug, Spitzenreiter 🎯 mit Kopfgeld, Befestigen, KI jagt den Führenden.' },
 ];
 
 const LAW_LABELS = {
@@ -317,7 +332,7 @@ const CHARACTERS = {
     },
     oekonomin: {
         name: 'Die Ökonomin', icon: '📊',
-        power: 'Sieht die nächste Ereigniskarte voraus. +50% Einkommen.',
+        power: 'Sieht die Ereigniskarte in zwei Runden voraus. +50% Einkommen.',
         story: 'Hat die Krise vorausgesagt. Niemand hat zugehört.',
     },
 };

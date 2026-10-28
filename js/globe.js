@@ -820,6 +820,10 @@ const Globe = (() => {
             p.halo.visible = active;
             p.halo.material.opacity = 0.5 + Math.sin(t * 5) * 0.3;
             p.tag.material.opacity = active ? 1 : 0.7;
+            if (p.target.visible) {
+                p.target.rotation.y = t * 1.2;
+                p.target.scale.setScalar(1 + Math.sin(t * 4) * 0.08);
+            }
         }
 
         for (const c of Object.values(crates)) {
@@ -966,8 +970,30 @@ const Globe = (() => {
         tag.position.y = player.isBot ? 0.9 : 0.8;
         mesh.add(tag);
 
+        const target = new THREE.Group();
+        const redMat = new THREE.MeshBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+        const outer = new THREE.Mesh(new THREE.RingGeometry(0.36, 0.42, 40), redMat);
+        const inner = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.24, 40), redMat);
+        [outer, inner].forEach(r => { r.rotation.x = -Math.PI / 2; r.position.y = 0.02; target.add(r); });
+        for (let k = 0; k < 4; k++) {
+            const tick = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 0.16), redMat);
+            tick.rotation.x = -Math.PI / 2;
+            tick.rotation.z = (k * Math.PI) / 2;
+            tick.position.set(Math.sin((k * Math.PI) / 2) * 0.48, 0.02, Math.cos((k * Math.PI) / 2) * 0.48);
+            target.add(tick);
+        }
+        const targetTag = makeTag('🎯 SPITZENREITER', '#ff3333', 0.55);
+        targetTag.position.y = 1.15;
+        target.add(targetTag);
+        target.visible = false;
+        mesh.add(target);
+
         globeGroup.add(mesh);
-        pawns[player.id] = { mesh, halo, tag, basePos: new THREE.Vector3(), normal: new THREE.Vector3(0, 1, 0), traveling: false, loc: null };
+        pawns[player.id] = { mesh, halo, tag, target, targetTag, basePos: new THREE.Vector3(), normal: new THREE.Vector3(0, 1, 0), traveling: false, loc: null };
+    }
+
+    function setLeader(id) {
+        for (const [pid, pawn] of Object.entries(pawns)) pawn.target.visible = Number(pid) === id;
     }
 
     function layoutPawns(players) {
@@ -982,6 +1008,7 @@ const Globe = (() => {
                 pawn.normal.copy(slot.normal);
                 pawn.loc = loc;
                 pawn.tag.position.y = 0.8 + i * 0.22;
+                pawn.targetTag.position.y = pawn.tag.position.y + (LOCATIONS[loc].isBunker ? 0.75 : 0.3);
                 orientToNormal(pawn.mesh, slot.normal);
                 pawn.mesh.position.copy(slot.pos);
             });
@@ -1384,7 +1411,7 @@ const Globe = (() => {
 
     return {
         init, focus, setIdleSpin, setTravelSpeed, setQuality, getFps: () => fpsMeter.fps, getQuality: () => quality, setDay, setDayBase, setHighlights, setAvailability, setBunkerState,
-        setPlayers, layoutPawns, setActivePawn, travel, ring, popText, sparks, explosion, missileBetween,
+        setPlayers, layoutPawns, setActivePawn, setLeader, travel, ring, popText, sparks, explosion, missileBetween,
         apocalypse, nuclearWinter, shake, setThreat, addCrate, removeCrate, resetScorch, scorch,
         normalOf: id => markers[id].normal.clone(),
     };

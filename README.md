@@ -29,9 +29,23 @@ Es gibt nur halb so viele Bunker wie Spieler.
 | Afrika      | ARA     | ⚡ Energie      | Reisen 20% günstiger             |
 | zufällig    | –       | 💎 Rohstoffe    | Joker für jede Bunker-Ressource  |
 
-**Bunker:** 3 Lebensmittel, 2 Technik, 3 Energie und 2 Militär sammeln. Dann zu einem freien Bunker-Standort reisen (Südl. Alpen, Neuseeland, Spitzbergen) und 3× bauen. Danach im Bunker bleiben!
+**Bunker:** 3 Lebensmittel, 2 Technik, 3 Energie und 2 Militär sammeln. Dann zu einem freien Bunker-Standort reisen und 3× bauen – **höchstens 1 Bauschritt pro Zug**. Danach im Bunker bleiben! Jeder Standort ist anders:
 
-**Aktionen (Tasten 1–0):** Reisen (auf die Weltkugel klicken) · Markt (kaufen, verkaufen, Schwarzmarkt) · Arbeiten · Bank (Geld wechseln, Kredit, Versicherung) · Krypto · Essen · Angriff · Vertrag · Bunker bauen · Zug beenden.
+| Standort | Eigenschaft |
+|---|---|
+| 🏔️ Südl. Alpen | nah, aber schwach verteidigt (−1 Verteidigung) |
+| 🪨 Neuseeland | weit weg, aber Felsenbunker (+2 Verteidigung) |
+| 🧊 Spitzbergen | Permafrost: braucht 1 Energie weniger |
+
+**🎯 Spitzenreiter:** Wer am nächsten am Ziel ist, wird markiert, und alle sehen seine Ressourcen. Wer ihn erfolgreich angreift, seine Baustelle sabotiert oder seinen Bunker stürmt, erhält **150 € Kopfgeld**. Die KI-Spieler jagen den Spitzenreiter. Dagegen hilft **Befestigen** (Taste F): 1 Energie, Militär oder Rohstoff gibt dem eigenen Bunker +1 Verteidigung (max. +3).
+
+**Kampf:** Würfel (1–3) + Militär gegen Würfel + Militär. Der kleine Würfel sorgt dafür, dass Können mehr zählt als Glück.
+
+**Vorausplanen:** Die Ereigniskarte der nächsten Runde ist für alle sichtbar.
+
+**Punkte:** Überleben 1000 · pro Bauschritt 100 · 1 Punkt pro 10 € Vermögen. Danach richtet sich die Rangliste am Ende.
+
+**Aktionen (Tasten 1–0, Q, F):** Reisen (auf die Weltkugel klicken) · Markt (kaufen, verkaufen, Schwarzmarkt) · Arbeiten · Lernen (Quiz) · Bank (Geld wechseln, Kredit, Versicherung) · Krypto · Essen · Angriff · Vertrag · Bunker bauen · Befestigen · Zug beenden.
 
 Die ausführliche Anleitung gibt es im Spiel über den ❓-Knopf. Links im Spiel gibt ein **Berater** 💡 jederzeit einen Tipp, was als Nächstes sinnvoll ist.
 
@@ -48,13 +62,13 @@ Jeder Spieler wählt einen Charakter mit einer Spezialfähigkeit (oder bekommt e
 | 🚀 Der Krypto-Bro   | Keine Sperrfrist bei Krypto, startet mit 2 BunkerCoin              |
 | 🦹 Die Schmugglerin | Schwarzmarkt nur 1.5× Preis und 10% Risiko                         |
 | 🎩 Der Diplomat     | Ignoriert Embargos und Grenzschliessungen, Reisen 15% günstiger    |
-| 📊 Die Ökonomin     | Sieht die nächste Ereigniskarte voraus, +50% Einkommen             |
+| 📊 Die Ökonomin     | Sieht die Ereigniskarte in zwei Runden voraus, +50% Einkommen      |
 
 ## Design Thinking
 
 Der ganze Entwicklungsprozess (Strategy → Research → Synthesize → Ideate → Prototype & Evaluate → Build) ist in [`docs/DESIGN_THINKING.md`](docs/DESIGN_THINKING.md) dokumentiert. Im Spiel gibt es dazu:
 
-- **🛠️ Making-of** (Startbildschirm): zeigt alle Phasen und die 5 Prototypen – für die Präsentation.
+- **🛠️ Making-of** (Startbildschirm): zeigt alle Phasen und die 6 Prototypen – für die Präsentation.
 - **🎚️ Einsteiger-Modus**: ohne Krypto, Verträge, Schwarzmarkt und Abstimmungen – für eine Runde in einer Schulstunde.
 - **📝 Feedback geben** (Endbildschirm): Formular für Testpersonen mit Bewertungen und offenen Fragen.
 - **📊 Testauswertung** (Startbildschirm): Durchschnittswerte, gemessene Spieldauer, häufigste Fehlermeldungen, alle Antworten und Export als CSV für Excel.

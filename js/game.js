@@ -113,10 +113,11 @@ function has(p, charId) {
     return p.char === charId;
 }
 
-function reqFor(p) {
+function reqFor(p, siteId = null) {
     const req = { ...CONFIG.bunkerRequirements };
     if (has(p, 'ingenieurin')) req.tech = Math.max(0, req.tech - 1);
     if (game.laws.shelter) req.energy = Math.max(0, req.energy - 1);
+    if (siteId && BUNKER_TRAITS[siteId]) req.energy = Math.max(0, req.energy - BUNKER_TRAITS[siteId].energyDiscount);
     return req;
 }
 
@@ -153,10 +154,10 @@ function pop(p, text, color) {
     Globe.popText(p.location, text, color || p.color);
 }
 
-function bunkerNeeds(p) {
+function bunkerNeeds(p, siteId = null) {
     const need = {};
     let missing = 0;
-    for (const [k, v] of Object.entries(reqFor(p))) {
+    for (const [k, v] of Object.entries(reqFor(p, siteId))) {
         need[k] = Math.max(0, v - p.resources[k]);
         missing += need[k];
     }
@@ -170,6 +171,77 @@ function pactBetween(a, b) {
 
 function ownedBunker(p) {
     return BUNKER_ORDER.find(id => game.bunkers[id].owner === p.id) || null;
+}
+
+// ===== LEADER (the closer to the goal, the bigger the target) =====
+
+function progressScore(p) {
+    const own = ownedBunker(p);
+    if (own) {
+        const b = game.bunkers[own];
+        return 10 + b.progress * 3 + (b.completed ? 5 : 0);
+    }
+    const total = Object.values(reqFor(p)).reduce((a, b) => a + b, 0);
+    return total - bunkerNeeds(p).missingAfterWild;
+}
+
+function leaderOf() {
+    let best = null;
+    let bestScore = -1;
+    for (const p of game.players) {
+        const s = progressScore(p);
+        if (s > bestScore || (s === bestScore && best && wealthEUR(p) > wealthEUR(best))) {
+            best = p;
+            bestScore = s;
+        }
+    }
+    return bestScore >= CONFIG.leaderMinScore ? best : null;
+}
+
+function updateLeader() {
+    if (!game || game.over) return;
+    const leader = leaderOf();
+    const id = leader ? leader.id : null;
+    if (id === game.leaderId) return;
+    game.leaderId = id;
+    Globe.setLeader(id);
+    if (leader) {
+        log(`🎯 ${leader.name} ist jetzt Spitzenreiter! Wer ${leader.name} beraubt oder den Bunker sabotiert, erhält ${CONFIG.bountyEUR} € Kopfgeld.`, 'bad');
+        news(`Kopfgeld ausgesetzt: ${CONFIG.bountyEUR} € auf ${leader.name}!`);
+        toast(`🎯 ${leader.name} ist Spitzenreiter – Kopfgeld ${CONFIG.bountyEUR} €!`, 'info');
+    }
+}
+
+function isLeader(p) {
+    return game.leaderId === p.id;
+}
+
+function payBounty(hunter, victim) {
+    const { c, amount } = payLocal(game, hunter, CONFIG.bountyEUR);
+    hunter.stats.bounties = (hunter.stats.bounties || 0) + 1;
+    pop(hunter, `🎯 Kopfgeld +${fmt(amount)} ${CURRENCIES[c].symbol}`, '#fbbf24');
+    log(`🎯 ${hunter.name} kassiert ${fmt(amount)} ${CURRENCIES[c].name} Kopfgeld für den Treffer gegen Spitzenreiter ${victim.name}.`, 'good');
+    Sound.play('cash');
+}
+
+function bunkerDefense(id) {
+    const b = game.bunkers[id];
+    const owner = game.players[b.owner];
+    const present = owner.location === id;
+    const base = (b.completed ? 3 : 1) + (BUNKER_TRAITS[id] ? BUNKER_TRAITS[id].defense : 0) + (b.fort || 0);
+    return Math.max(0, base + (present ? combatBonus(owner) : 0));
+}
+
+function scoreOf(p, alive) {
+    const own = ownedBunker(p);
+    const b = own ? game.bunkers[own] : null;
+    const steps = b ? (b.completed ? CONFIG.bunkerBuildSteps : b.progress) : 0;
+    const parts = {
+        survive: alive ? CONFIG.scoreSurvive : 0,
+        bunker: steps * CONFIG.scorePerBuildStep,
+        wealth: Math.max(0, Math.round(wealthEUR(p) / CONFIG.scoreEURPerPoint)),
+    };
+    return { ...parts, total: parts.survive + parts.bunker + parts.wealth };
 }
 
 // ===== SETUP =====
@@ -205,7 +277,8 @@ function newGame(setup, length, speed, mode) {
         pacts: [],
         lessons: [],
         recentCards: [],
-        nextCard: null,
+        cardQueue: [],
+        leaderId: null,
         laws: {},
         votesDone: [],
         quizUsed: [],
@@ -249,10 +322,10 @@ function newGame(setup, length, speed, mode) {
             insurance: 0,
             record: 0,
             attackedThisTurn: false,
-            stats: { fees: 0, interest: 0, bought: 0, stolen: 0, won: 0, lost: 0, worked: 0, smuggled: 0, caught: 0, crypto: 0, breaches: 0, travelled: 0, quiz: 0, quizRight: 0 },
+            stats: { fees: 0, interest: 0, bought: 0, stolen: 0, won: 0, lost: 0, worked: 0, smuggled: 0, caught: 0, crypto: 0, breaches: 0, travelled: 0, quiz: 0, quizRight: 0, bounties: 0, fortified: 0 },
         };
     });
-    game.nextCard = pickCard();
+    game.cardQueue = [pickCard(), pickCard()];
 }
 
 function applySpeed() {
@@ -390,11 +463,13 @@ function addToHall(fates) {
         char: f.p.char,
         bot: f.p.isBot,
         wealth: Math.round(wealthEUR(f.p)),
+        score: f.score.total,
         players: game.players.length,
         date: new Date().toLocaleDateString('de-CH'),
     }));
     if (!entries.length) return [];
-    const hall = loadHall().concat(entries).sort((a, b) => b.wealth - a.wealth).slice(0, 8);
+    const points = h => (typeof h.score === 'number' ? h.score : CONFIG.scoreSurvive + Math.round(h.wealth / CONFIG.scoreEURPerPoint));
+    const hall = loadHall().concat(entries).sort((a, b) => points(b) - points(a)).slice(0, 8);
     try {
         localStorage.setItem(HALL_KEY, JSON.stringify(hall));
     } catch (e) {
@@ -411,6 +486,8 @@ async function resumeGame(saved) {
     game.metrics = game.metrics || newMetrics();
     game.votesDone = game.votesDone || [];
     game.quizUsed = game.quizUsed || [];
+    if (!game.cardQueue) game.cardQueue = game.nextCard ? [game.nextCard] : [];
+    game.leaderId = null;
     game.players.forEach(p => {
         p.stats.quiz = p.stats.quiz || 0;
         p.stats.quizRight = p.stats.quizRight || 0;
@@ -464,6 +541,7 @@ async function startTurn() {
     p.foodBoosts = 0;
     p.attackedThisTurn = false;
     p.studiedThisTurn = false;
+    p.builtThisTurn = false;
     if (p.cryptoLock > 0) p.cryptoLock--;
     if (p.insurance > 0) p.insurance--;
 
@@ -651,15 +729,16 @@ function pickCard() {
 }
 
 function drawCard() {
-    const next = game.nextCard || pickCard();
-    game.nextCard = pickCard();
+    while (game.cardQueue.length < 2) game.cardQueue.push(pickCard());
+    const next = game.cardQueue.shift();
+    game.cardQueue.push(pickCard());
     return { card: EVENT_CARDS[next.i], target: next.target };
 }
 
-function forecast() {
-    if (!game.nextCard) return null;
-    const card = EVENT_CARDS[game.nextCard.i];
-    return { card, target: game.nextCard.target };
+function forecast(ahead = 0) {
+    const entry = game.cardQueue && game.cardQueue[ahead];
+    if (!entry) return null;
+    return { card: EVENT_CARDS[entry.i], target: entry.target };
 }
 
 function updateDefcon() {
@@ -1031,8 +1110,9 @@ async function actAttack(p, target) {
     game.busy = true;
 
     const inOwnBunker = ownedBunker(target) === target.location && game.bunkers[target.location].completed;
-    const a = randInt(1, 6);
-    const d = randInt(1, 6);
+    const targetWasLeader = isLeader(target);
+    const a = randInt(1, CONFIG.combatDie);
+    const d = randInt(1, CONFIG.combatDie);
     const aBonus = combatBonus(p);
     const dBonus = combatBonus(target) + (inOwnBunker ? 2 : 0);
     const win = a + aBonus > d + dBonus;
@@ -1048,7 +1128,7 @@ async function actAttack(p, target) {
     if (win) {
         p.stats.won++;
         const loot = Object.keys(target.resources).filter(k => target.resources[k] > 0);
-        const n = a + aBonus - (d + dBonus) >= 4 ? 2 : 1;
+        const n = a + aBonus - (d + dBonus) >= 3 ? 2 : 1;
         const taken = [];
         for (let i = 0; i < n && loot.length; i++) {
             const k = rand(loot.filter(x => target.resources[x] > 0));
@@ -1072,6 +1152,7 @@ async function actAttack(p, target) {
             p.money[c] += amount;
             log(`⚔️ ${p.name} besiegt ${target.name} und plündert ${fmt(amount)} ${CURRENCIES[c].name}!`, 'good');
         }
+        if (targetWasLeader) payBounty(p, target);
         Sound.play('win');
     } else if (!tie) {
         p.stats.lost++;
@@ -1094,24 +1175,27 @@ async function actRaidBunker(p) {
     if (!LOCATIONS[id].isBunker || b.owner === null || b.owner === p.id) return fail(p, 'Hier gibt es keinen fremden Bunker.');
     const mine = ownedBunker(p);
     if (b.completed && mine) return fail(p, 'Du hast schon einen Bunker – eine Übernahme ist nicht erlaubt.');
+    if (!b.completed && b.sabotagedRound === game.round) return fail(p, 'Diese Baustelle wurde diese Runde schon sabotiert.');
     const owner = game.players[b.owner];
+    const ownerWasLeader = isLeader(owner);
     await breachPact(p, owner);
     spend(p);
     p.attackedThisTurn = true;
     game.busy = true;
 
     const present = owner.location === id;
-    const a = randInt(1, 6);
-    const d = randInt(1, 6);
+    const a = randInt(1, CONFIG.combatDie);
+    const d = randInt(1, CONFIG.combatDie);
     const aBonus = combatBonus(p);
-    const dBonus = bunkerDefense(b);
+    const dBonus = bunkerDefense(id);
+    const wallParts = [BUNKER_TRAITS[id] && BUNKER_TRAITS[id].defense ? `Standort ${BUNKER_TRAITS[id].defense > 0 ? '+' : ''}${BUNKER_TRAITS[id].defense}` : '', b.fort ? `Befestigung +${b.fort}` : '', present ? 'Besitzer-Militär' : ''].filter(Boolean);
     const win = a + aBonus > d + dBonus;
     const title = b.completed ? `${p.name} stürmt den Bunker von ${owner.name}!` : `${p.name} sabotiert die Baustelle von ${owner.name}!`;
 
     Globe.explosion(id, false);
     await showDice(title,
         { name: p.name, color: p.color, roll: a, bonus: aBonus, label: has(p, 'general') ? 'Militär +1 General' : 'Militär' },
-        { name: `Bunker ${owner.name}`, color: owner.color, roll: d, bonus: dBonus, label: present ? 'Mauern + Besitzer-Militär' : 'Bunkermauern' },
+        { name: `Bunker ${owner.name}`, color: owner.color, roll: d, bonus: dBonus, label: ['Mauern', ...wallParts].join(' + ') },
         win ? (b.completed ? 'BUNKER ÜBERNOMMEN!' : 'SABOTAGE GELUNGEN!') : 'Angriff abgewehrt!', win ? 'win' : 'lose');
 
     if (win) {
@@ -1127,14 +1211,17 @@ async function actRaidBunker(p) {
             news(`Bunker-Putsch in ${LOCATIONS[id].name}: ${p.name} vertreibt ${owner.name}!`);
         } else {
             b.progress--;
+            b.sabotagedRound = game.round;
             if (b.progress <= 0) {
                 b.owner = null;
                 b.progress = 0;
+                b.fort = 0;
                 log(`💣 ${p.name} zerstört die Baustelle von ${owner.name} komplett! Der Bunker ist wieder frei.`, 'bad');
             } else {
                 log(`💣 ${p.name} sabotiert den Bunkerbau von ${owner.name} (Fortschritt −1).`, 'bad');
             }
         }
+        if (ownerWasLeader) payBounty(p, owner);
         p.stats.won++;
         Sound.play('win');
         Globe.explosion(id, true);
@@ -1161,26 +1248,29 @@ async function actBuild(p) {
     if (b.completed) return fail(p, 'Dein Bunker ist fertig! Bleib hier und warte.');
     const mine = ownedBunker(p);
     if (mine && mine !== id) return fail(p, `Du baust schon in ${LOCATIONS[mine].name}.`);
+    if (p.builtThisTurn) return fail(p, 'Nur 1 Bauschritt pro Zug. Befestige deinen Bunker oder warte auf den nächsten Zug.');
 
     if (b.owner === null) {
-        const { need, missingAfterWild } = bunkerNeeds(p);
+        const { need, missingAfterWild } = bunkerNeeds(p, id);
         if (missingAfterWild > 0) {
             const txt = Object.entries(need).filter(([, v]) => v > 0).map(([k, v]) => `${v} ${RESOURCES[k].name}`).join(', ');
             return fail(p, `Es fehlen: ${txt} (Rohstoffe zählen als Joker)`);
         }
-        for (const [k, v] of Object.entries(reqFor(p))) {
+        for (const [k, v] of Object.entries(reqFor(p, id))) {
             const fromOwn = Math.min(v, p.resources[k]);
             p.resources[k] -= fromOwn;
             p.resources.rare -= v - fromOwn;
         }
         b.owner = p.id;
         b.progress = 0;
+        b.fort = 0;
         log(`🛖 ${p.name} beginnt mit dem Bau des Bunkers in ${loc.name}!`, 'info');
         news(`${p.name} gräbt in ${loc.name} – Nachbarn beunruhigt`);
     }
 
     const steps = stepsFor(p);
     b.progress++;
+    p.builtThisTurn = true;
     spend(p);
     Sound.play('build');
     Globe.ring(id, p.color, 1);
@@ -1254,23 +1344,40 @@ async function actContract(p, target, offer) {
     return true;
 }
 
-function bunkerDefense(b) {
-    const owner = game.players[b.owner];
-    const present = owner.location === BUNKER_ORDER.find(id => game.bunkers[id] === b);
-    return (b.completed ? 3 : 1) + (present ? combatBonus(owner) : 0);
+function actFortify(p) {
+    if (!canAct(p)) return false;
+    const id = p.location;
+    const b = LOCATIONS[id].isBunker ? game.bunkers[id] : null;
+    if (!b || b.owner !== p.id) return fail(p, 'Befestigen kannst du nur deinen eigenen Bunker – reise dorthin.');
+    if ((b.fort || 0) >= CONFIG.maxFortify) return fail(p, `Dein Bunker ist schon maximal befestigt (+${CONFIG.maxFortify}).`);
+    const res = ['energy', 'military', 'rare'].find(k => p.resources[k] > 0);
+    if (!res) return fail(p, 'Zum Befestigen brauchst du 1 Energie, 1 Militär oder 1 Rohstoff.');
+    p.resources[res]--;
+    b.fort = (b.fort || 0) + 1;
+    p.stats.fortified = (p.stats.fortified || 0) + 1;
+    spend(p);
+    Sound.play('build');
+    Globe.ring(id, '#94a3b8', 0.8);
+    pop(p, `🧱 Befestigung +${b.fort}`, '#cbd5e1');
+    log(`🧱 ${p.name} befestigt den Bunker in ${LOCATIONS[id].name} mit 1 ${RESOURCES[res].name} (Verteidigung +${b.fort}).`);
+    refreshBunkers();
+    render();
+    return true;
 }
 
 function refreshBunkers() {
     for (const id of BUNKER_ORDER) {
         const b = game.bunkers[id];
         if (!b.available) continue;
+        const trait = BUNKER_TRAITS[id];
         if (b.owner === null) {
-            Globe.setBunkerState(id, 'free', null, 'Frei', 0);
+            Globe.setBunkerState(id, 'free', null, `${trait.icon} Frei`, 0);
         } else {
             const o = game.players[b.owner];
             const steps = stepsOfBunker(b);
+            const fort = b.fort ? ` 🧱${b.fort}` : '';
             Globe.setBunkerState(id, b.completed ? 'done' : 'building', o.color,
-                b.completed ? `✔ ${o.name}` : `${o.name} ${b.progress}/${steps}`, b.progress / steps);
+                b.completed ? `✔ ${o.name}${fort}` : `${o.name} ${b.progress}/${steps}${fort}`, b.progress / steps);
         }
     }
 }
@@ -1295,7 +1402,10 @@ async function endGame() {
     closeModal();
     hideTooltip();
     recordWealth();
-    const fates = game.players.map(p => ({ p, ...fateOf(p) }));
+    const fates = game.players.map(p => {
+        const fate = fateOf(p);
+        return { p, ...fate, score: scoreOf(p, fate.alive) };
+    });
     const protectedIds = fates.filter(f => f.alive).map(f => f.bunker);
 
     Sound.play('siren');
