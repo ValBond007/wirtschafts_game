@@ -1024,6 +1024,14 @@ body.apocalypse #hud { display: none; }
 .dt-name { font-weight: 900; color: var(--c); font-size: 14px; }
 .dt-de { font-size: 12px; color: var(--dim); margin-bottom: 6px; }
 .dt-card ul { padding-left: 16px; font-size: 12px; line-height: 1.45; color: #cbd5e1; }
+.dt-concept { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.dt-concept:last-child { border-bottom: none; }
+.dt-c-head { display: flex; justify-content: space-between; font-size: 13.5px; }
+.dt-c-score { font: 800 13px var(--mono); color: var(--accent); }
+.dt-c-bar { height: 6px; background: rgba(255, 255, 255, 0.07); border-radius: 3px; overflow: hidden; margin: 5px 0; }
+.dt-c-bar div { height: 100%; background: #34d399; border-radius: 3px; }
+.dt-c-pitch { font-size: 12.5px; color: #cbd5e1; font-style: italic; line-height: 1.45; }
+.dt-c-note { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
 .dt-loop { text-align: center; color: var(--accent); font-weight: 700; font-size: 13px; margin: 10px 0; }
 .dt-it { display: grid; grid-template-columns: 82px 82px 1fr; gap: 8px; font-size: 12.5px; padding: 5px 0; border-bottom: 1px solid var(--border); color: #cbd5e1; }
 .dt-it:last-child { border-bottom: none; }

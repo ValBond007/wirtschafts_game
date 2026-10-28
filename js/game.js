@@ -246,8 +246,16 @@ function scoreOf(p, alive) {
 
 // ===== SETUP =====
 
+// Interview finding: game lengths may vary, but not by much. Cards can only shift the war inside this window.
+const GAME_LENGTHS = { short: [9, 11], normal: [13, 15], long: [18, 20] };
+
+function shiftDoomsday(g, delta) {
+    const [min, max] = g.lengthRange || [1, 99];
+    g.doomsdayRound = Math.max(g.round + 1, Math.min(max, Math.max(min, g.doomsdayRound + delta)));
+}
+
 function newGame(setup, length, speed, mode) {
-    const range = { short: [8, 11], normal: [12, 16], long: [17, 22] }[length] || [12, 16];
+    const range = GAME_LENGTHS[length] || GAME_LENGTHS.normal;
     const rates = {};
     const history = {};
     for (const [c, v] of Object.entries(CURRENCIES)) {
@@ -265,6 +273,7 @@ function newGame(setup, length, speed, mode) {
         round: 0,
         cur: 0,
         doomsdayRound: randInt(range[0], range[1]),
+        lengthRange: range,
         rates,
         history,
         priceIndex: Object.fromEntries(CONTINENT_IDS.map(id => [id, 1])),

@@ -219,11 +219,11 @@ const DESIGN_PHASES = [
     },
     {
         name: 'Ideate', de: 'Ideen entwickeln', color: '#34d399', group: 'things',
-        points: ['Kontinente mit eigenen Währungen, knappe Bunker, Krypto mit Sperrfrist', 'Charaktere, Volksabstimmung, Quiz, Berater, geführte Tour', 'Einsteiger-Modus für kurze Runden'],
+        points: ['Divergent: Brainstorming, ABC, Analogie, Rollentausch, Reizwort, Provokation', 'Ideen in 6 Clustern gruppiert, 3 Konzepte skizziert', 'Konvergent: Bewertung nach 5 Kriterien → Wettlauf, Wettlauf + Auktion, Gemeinsam oder allein'],
     },
     {
         name: 'Prototype & Evaluate', de: 'Bauen und testen', color: '#94a3b8', group: 'things',
-        points: ['6 Prototypen: von der 2D-Karte zum 3D-Globus', 'Automatisierte Testspiele mit 4–6 KI-Spielern', 'Befragung → Prototyp 6: weniger Glück, mehr Strategie, Spitzenreiter angreifbar'],
+        points: ['7 Prototypen: von der 2D-Karte zum 3D-Globus', 'Automatisierte Testspiele mit 4–6 KI-Spielern', 'Befragung → Prototyp 6: weniger Glück, mehr Strategie, Spitzenreiter angreifbar'],
     },
     {
         name: 'Build', de: 'Umsetzen', color: '#e2e8f0', group: 'things',
@@ -238,6 +238,14 @@ const ITERATIONS = [
     { v: 'Prototyp 4', date: '25.09.2026', text: 'Volksabstimmung, Quiz, geführte Tour. Test: Start oft auf der dunklen Nachtseite → Sonne startet über dem ersten Spieler. Langsame Computer → automatische Grafikanpassung.' },
     { v: 'Prototyp 5', date: '21.10.2026', text: 'Design Thinking: Einsteiger-Modus für kurze Runden, Feedback-Formular und Testauswertung im Spiel, Making-of.' },
     { v: 'Prototyp 6', date: '28.10.2026', text: 'Aus der Befragung (hoher Skillcap, strategisch, Führender angreifbar): Würfel 1–3, nächste Ereigniskarte für alle sichtbar, Bunker mit Eigenschaften, Punktesystem, 1 Bauschritt pro Zug, Spitzenreiter 🎯 mit Kopfgeld, Befestigen, KI jagt den Führenden.' },
+    { v: 'Prototyp 7', date: '28.10.2026', text: 'Spieldauer präzisiert: Unterschiede ja, aber nicht zu gross. Engere Bereiche (Normal 13–15 Runden), Ereigniskarten verschieben den Krieg nur innerhalb davon.' },
+];
+
+// Results of worksheet 4 (IDEATE), shown in the making-of.
+const IDEATE_CONCEPTS = [
+    { name: 'A · Der Wettlauf', score: 23, pitch: 'Reist um die Welt, handelt mit schwankenden Währungen und sammelt Ressourcen für einen der wenigen Bunkerplätze – doch wer vorne liegt, wird von allen gejagt.', note: 'als Prototyp umgesetzt' },
+    { name: 'B · Die Versteigerung', score: 19, pitch: 'Bunkerplätze gehen an die Höchstbietenden – aber wer sein ganzes Geld bietet, hat im Bunker nichts mehr zu essen.', note: 'Kombination A + B möglich' },
+    { name: 'C · Gemeinsam oder allein', score: 17, pitch: 'Alle brauchen den gemeinsamen Bunker – aber jeder Franken, den du beiträgst, fehlt dir selbst, und jemand im Team will, dass ihr scheitert.', note: 'mutige Alternative' },
 ];
 
 const LAW_LABELS = {
@@ -454,15 +462,15 @@ const EVENT_CARDS = [
     },
     {
         title: 'Wettrüsten', icon: '☢️', kind: 'bad',
-        text: () => 'Die Grossmächte rüsten auf! Militär wird 35% billiger — aber der Krieg rückt näher.',
+        text: () => 'Die Grossmächte rüsten auf! Militär wird 35% billiger — und der Krieg rückt vielleicht näher.',
         lesson: 'Sicherheitsdilemma: Wenn alle aufrüsten, fühlt sich niemand sicherer.',
-        apply: g => { g.priceIndex.nordamerika *= 0.65; g.doomsdayRound = Math.max(g.round + 1, g.doomsdayRound - 1); },
+        apply: g => { g.priceIndex.nordamerika *= 0.65; shiftDoomsday(g, -1); },
     },
     {
         title: 'Friedensgespräche', icon: '🤝', kind: 'good',
-        text: () => 'Diplomaten verhandeln in Genf. Der Weltuntergang wird etwas verschoben...',
+        text: () => 'Diplomaten verhandeln in Genf. Der Weltuntergang wird vielleicht etwas verschoben...',
         lesson: 'Verhandlungen und Verträge können Konflikte entschärfen.',
-        apply: g => { g.doomsdayRound += 1; },
+        apply: g => { shiftDoomsday(g, 1); },
     },
     {
         title: 'Cyberangriff auf Banken', icon: '💻', kind: 'bad',

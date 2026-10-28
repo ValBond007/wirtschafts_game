@@ -68,7 +68,7 @@ Jeder Spieler wählt einen Charakter mit einer Spezialfähigkeit (oder bekommt e
 
 Der ganze Entwicklungsprozess (Strategy → Research → Synthesize → Ideate → Prototype & Evaluate → Build) ist in [`docs/DESIGN_THINKING.md`](docs/DESIGN_THINKING.md) dokumentiert. Im Spiel gibt es dazu:
 
-- **🛠️ Making-of** (Startbildschirm): zeigt alle Phasen und die 6 Prototypen – für die Präsentation.
+- **🛠️ Making-of** (Startbildschirm): zeigt alle Phasen, die 3 Konzepte aus der Ideenphase und die 7 Prototypen – für die Präsentation.
 - **🎚️ Einsteiger-Modus**: ohne Krypto, Verträge, Schwarzmarkt und Abstimmungen – für eine Runde in einer Schulstunde.
 - **📝 Feedback geben** (Endbildschirm): Formular für Testpersonen mit Bewertungen und offenen Fragen.
 - **📊 Testauswertung** (Startbildschirm): Durchschnittswerte, gemessene Spieldauer, häufigste Fehlermeldungen, alle Antworten und Export als CSV für Excel.

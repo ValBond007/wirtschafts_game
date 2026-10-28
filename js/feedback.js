@@ -221,6 +221,13 @@ function openMakingOf() {
         <p class="muted" style="margin-bottom:12px">Entwickelt mit <b>Design Thinking</b> – einem iterativen, nutzerzentrierten Prozess. Erkenntnisse aus Tests führen immer wieder zurück zu früheren Phasen.</p>
         ${cards}
         <div class="dt-loop">↻ Iterativ: Testen → neue Erkenntnisse → zurück zu Research, Synthese oder Ideen</div>
+        <div class="m-section"><h4>💡 Ideate: 3 Konzepte (bewertet nach 5 Kriterien, max. 25 Punkte)</h4>
+            ${IDEATE_CONCEPTS.map(c => `<div class="dt-concept">
+                <div class="dt-c-head"><b>${esc(c.name)}</b><span class="dt-c-score">${c.score}/25</span></div>
+                <div class="dt-c-bar"><div style="width:${(c.score / 25) * 100}%"></div></div>
+                <div class="dt-c-pitch">«${esc(c.pitch)}»</div>
+                <div class="dt-c-note">${esc(c.note)}</div></div>`).join('')}
+        </div>
         <div class="m-section"><h4>Iterationen</h4>${timeline}</div>
         <div class="m-section"><h4>Testphase mit Menschen</h4>
             <p>Bisher gesammelte Feedbacks auf diesem Computer: <b>${count}</b>. Jede Testperson füllt nach dem Spiel das Formular «📝 Feedback geben» aus.</p>

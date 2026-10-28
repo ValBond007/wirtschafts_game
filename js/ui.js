@@ -694,6 +694,7 @@ function helpHTML() {
         <h4>🔁 Ablauf</h4>
         <p>Jede Runde zieht eine Ereigniskarte (Inflation, Crash, Embargo, Raketeneinschlag …). Dann ist jeder Spieler einmal am Zug und hat <b>${CONFIG.actionsPerTurn} Aktionspunkte (AP)</b>. Zu Beginn jeder Runde erhalten alle ${CONFIG.incomeEUR} € Einkommen in der Währung ihres Standorts. Die Sonne wandert jede Runde weiter – auf der Nachtseite leuchten die Städte.</p>
         <p>📰 Die Ereigniskarte der <b>nächsten</b> Runde ist für alle sichtbar (rechts oben). So könnt ihr vorausplanen.</p>
+        <p>⏱️ Der Krieg bricht je nach Spieldauer nach <b>9–11</b> (Kurz), <b>13–15</b> (Normal) oder <b>18–20</b> Runden (Lang) aus. Die genaue Runde bleibt geheim, aber die Partien sind ungefähr gleich lang.</p>
         <h4>🌍 Kontinente</h4>
         <table><tr><th>Kontinent</th><th>Währung</th><th>Ressource</th><th>Effekt</th></tr>
             <tr><td>Nordamerika</td><td>USD</td><td>⚔️ Militär</td><td>Angriff & Verteidigung</td></tr>

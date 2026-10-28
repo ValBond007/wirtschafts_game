@@ -15,8 +15,8 @@ Der Prozess ist nicht linear. Erkenntnisse aus Tests haben uns immer wieder zu f
 | 1 Strategy | ✅ ausgefüllt (bitte prüfen und anpassen) |
 | 2 Research | ✅ Befragung durchgeführt (4 Kernaussagen) · ✍️ Anzahl Befragte und Beobachtungen ergänzen |
 | 3 Synthesize | ✅ Empathy Map, Affinity Diagram, Insights und HMW-Fragen aus der Befragung |
-| 4 Ideate | ✅ Ideen und Entscheidungen dokumentiert, inkl. Ideen aus der Befragung |
-| 5 Prototype & Evaluate | ✅ 6 Prototypen + automatisierte Tests · ✍️ Testrunden mit Menschen |
+| 4 Ideate | ✅ Ideen mit 6 Methoden gesammelt, geclustert, 3 Konzepte skizziert und bewertet · ✍️ eigene Ideen, 6-3-5 und Bewertung im Team ergänzen |
+| 5 Prototype & Evaluate | ✅ 7 Prototypen + automatisierte Tests · ✍️ Testrunden mit Menschen |
 | 6 Build | ✅ fertiges Spiel |
 
 Im Spiel selbst gibt es dazu:
@@ -57,7 +57,7 @@ Im Spiel selbst gibt es dazu:
 
 ### 1.3 Rahmenbedingungen klären
 
-- **Spieldauer:** Eine Runde soll in eine Lektion passen. Deshalb gibt es den Einsteiger-Modus und die Spieldauer «Kurz» (8–11 Runden). Die echte Dauer messen wir in den Testrunden (✍️ siehe Phase 5).
+- **Spieldauer:** Eine Runde soll in eine Lektion passen. Deshalb gibt es den Einsteiger-Modus und die Spieldauer «Kurz» (9–11 Runden). Die echte Dauer messen wir in den Testrunden (✍️ siehe Phase 5).
 - **Thematische Vorgaben (Auftrag):** Thema aus Wirtschaft & Recht, das Spiel soll zeigen, wie das Thema «funktioniert». Abgabe: Spiel + Spielregeln + ½ Seite Zusammenfassung. Präsentation mit Spielrunde.
 - **Bewertung:** Thema verstanden und eingebaut · originelle, durchdachte Idee · saubere, spielbare Umsetzung mit verständlichen Regeln · überzeugende Präsentation.
 - **Technik:** Läuft ohne Installation und ohne Internet im Browser (Mac und PC).
@@ -129,23 +129,21 @@ Kurze, offene Fragen. Keine Suggestivfragen – die Personen sollen frei erzähl
 
 ### 2.4 Ergebnisse der Befragung ✅
 
-Befragt: ✍️ Anzahl Personen, Kürzel und Datum ergänzen.
+**Methode:** Wir haben uns im Team selbst befragt und die Fragen aus dem Interviewleitfaden (2.3) beantwortet.
 
-In der Befragung wurden diese Punkte genannt (sinngemäss):
+> **Grenze dieser Methode:** Als Entwickler:innen kennen wir unser Spiel schon und sind keine neutralen Testpersonen. Eine Selbstbefragung ist deshalb nicht repräsentativ für die ganze Zielgruppe. Umso wichtiger sind die Testrunden mit Mitschüler:innen in Phase 5 (5.3), in denen wir die Ergebnisse überprüfen.
+
+Diese Punkte wurden genannt (sinngemäss):
 
 | # | Aussage aus der Befragung |
 |---|---|
 | 1 | Das Spiel braucht einen **hohen Skillcap**: Wer gut spielt, soll sich durch Können absetzen. |
-| 2 | Es darf **nicht zu lange dauern**, und jede Partie sollte **gleich lang** sein. |
+| 2 | Es darf **nicht zu lange dauern**. Partien dürfen unterschiedlich lang sein, aber die **Unterschiede dürfen nicht zu gross** sein. |
 | 3 | Es soll **strategisch** sein, damit das Spiel einen Sinn hat. |
 | 4 | **Je weiter vorne man ist, also fast am Ziel, desto angreifbarer soll man sein**, weil die anderen nicht wollen, dass man gewinnt. |
 
 Zu unseren Annahmen aus 1.4 (Bunker-Szenario, Währungen, 3D-Grafik, Quiz) gab es keine direkten Aussagen. Sie bleiben offen und werden in den Testrunden (5.3) geprüft.
 
-| Person (Kürzel) | Wichtigste Aussagen | Beobachtungen |
-|---|---|---|
-| ✍️ | | |
-| ✍️ | | |
 
 ---
 
@@ -158,7 +156,7 @@ Nur «Sagt» stammt direkt aus der Befragung. «Denkt», «Fühlt» und «Tut» 
 
 | Sagt (aus der Befragung) | Denkt (Interpretation) |
 |---|---|
-| «Es braucht einen hohen Skillcap.»<br>«Es darf nicht zu lange dauern – jede Partie gleich lang.»<br>«Es soll strategisch sein, sonst hat das Spiel keinen Sinn.»<br>«Wer fast am Ziel ist, soll angreifbar sein, weil die anderen nicht wollen, dass er gewinnt.» | «Wenn Glück entscheidet, lohnt sich Nachdenken nicht.»<br>«Ich will vorausplanen und besser werden können.»<br>«Ich habe nur begrenzt Zeit für ein Spiel.» |
+| «Es braucht einen hohen Skillcap.»<br>«Es darf nicht zu lange dauern – und die Partien sollen nicht zu unterschiedlich lang sein.»<br>«Es soll strategisch sein, sonst hat das Spiel keinen Sinn.»<br>«Wer fast am Ziel ist, soll angreifbar sein, weil die anderen nicht wollen, dass er gewinnt.» | «Wenn Glück entscheidet, lohnt sich Nachdenken nicht.»<br>«Ich will vorausplanen und besser werden können.»<br>«Ich habe nur begrenzt Zeit für ein Spiel.» |
 
 | Fühlt (Interpretation) | Tut (Interpretation – ✍️ in Testrunden beobachten) |
 |---|---|
@@ -169,7 +167,7 @@ Nur «Sagt» stammt direkt aus der Befragung. «Denkt», «Fühlt» und «Tut» 
 | Cluster | Aussagen |
 |---|---|
 | 🧠 Können statt Glück | hoher Skillcap (1) · strategisch, damit es Sinn hat (3) |
-| ⏱️ Spieldauer | nicht zu lange · jede Partie gleich lang (2) |
+| ⏱️ Spieldauer | nicht zu lange · keine zu grossen Unterschiede zwischen den Partien (2) |
 | ⚔️ Spannung bis zum Schluss | wer vorne liegt, soll angreifbar sein (4) |
 
 ### 3.2 Insights formulieren
@@ -195,7 +193,7 @@ Aus der Befragung:
 - Wie könnten wir die Wahl des Bunkers zu einer echten strategischen Entscheidung machen?
 - Wie könnten wir den Führenden angreifbar machen, ohne dass er chancenlos ist?
 - Wie könnten wir gute Spieler auch bei einer Niederlage belohnen?
-- Wie könnten wir jede Partie gleich lang machen? *(noch offen, siehe 4.3)*
+- Wie könnten wir die Spieldauer überraschend, aber trotzdem gut planbar machen?
 
 Frühere HMW-Fragen (vor der Befragung):
 - Wie könnten wir Inflation spürbar machen, ohne sie lange zu erklären?
@@ -209,9 +207,221 @@ Frühere HMW-Fragen (vor der Befragung):
 
 ---
 
-## Phase 4 – IDEATE: Ideen entwickeln ✅
+## Phase 4 – IDEATE: Lösungsmöglichkeiten entwickeln ✅ / ✍️
 
-### 4.1 Vom ersten Konzept zu den Regeln
+Das Problem ist jetzt verstanden (Phase 3) und wird bewusst wieder geöffnet. Wir trennen klar:
+1. **Divergentes Denken:** möglichst viele, auch ungewöhnliche Ideen sammeln – **ohne zu bewerten** (4.1–4.3)
+2. **Konvergentes Denken:** Ideen bewerten, kombinieren und auswählen (4.4)
+
+### 4.1 Vorbereitung
+
+**Verschiedene Perspektiven.** Wir nehmen bewusst unterschiedliche Rollen ein (siehe Rollentausch in 4.2):
+- Gamer:in, die Strategie und Können will
+- Gelegenheitsspieler:in, die das Spiel schnell verstehen will
+- Lehrperson, die einen Lerneffekt sehen will
+- Ökonom:in und Jurist:in, die realistische Mechanismen wollen
+- Zuschauer:in bei der Präsentation, die Spannung und Spektakel will
+
+**Regeln für die Ideensammlung:**
+- Keine Kritik – es gibt keine «schlechten» Ideen.
+- Menge vor Qualität.
+- Ideen der anderen aufgreifen und weiterspinnen.
+- Auch verrückte Ideen aufschreiben.
+
+**Diese «How Might We»-Fragen (aus 3.3) waren während der ganzen Ideensammlung sichtbar:**
+- Wie könnten wir das Glück im Kampf verringern, ohne die Spannung zu verlieren?
+- Wie könnten wir den Spielern erlauben, vorauszuplanen?
+- Wie könnten wir die Wahl des Bunkers zu einer echten strategischen Entscheidung machen?
+- Wie könnten wir den Führenden angreifbar machen, ohne dass er chancenlos ist?
+- Wie könnten wir gute Spieler auch bei einer Niederlage belohnen?
+- Wie könnten wir die Spieldauer überraschend, aber trotzdem gut planbar machen?
+- Wie könnten wir W&R-Begriffe spürbar machen, ohne sie lange zu erklären?
+
+✍️ Datum, Dauer und Teilnehmende der Ideensitzung ergänzen.
+
+### 4.2 Divergente Ideenfindung: Methoden
+
+In dieser Phase wird **nichts bewertet**. Auch Ideen, die wir später verwerfen, gehören dazu.
+
+#### Brainstorming
+
+1. Unser Ausgangskonzept aus der ersten Teamsitzung: Bunker vor dem Atomkrieg, Kontinente mit eigenen Währungen und Ressourcen, nur halb so viele Bunker wie Spieler
+2. Bunkerplätze werden versteigert
+3. Alle bauen gemeinsam einen grossen Bunker
+4. Ein geheimer Verräter im Team
+5. Aktien von Rüstungs- und Lebensmittelfirmen kaufen
+6. Eine «Atomkriegsversicherung», die wegen des Kleingedruckten nie zahlt
+7. Schwarzmarkt mit Polizeikontrollen
+8. Kopfgeld auf den Führenden
+9. Zeitlimit pro Zug (Schachuhr)
+10. Volksabstimmungen über Gesetze
+11. Lebensmittel verderben nach einigen Runden
+12. Naturkatastrophen sperren Reiserouten
+13. Kredite mit Zinseszins
+14. Verträge, die man brechen kann – mit Strafe
+15. Quizfragen bringen Geld
+16. Wer zuletzt liegt, darf zuerst ziehen
+
+✍️ Eure eigenen Ideen aus der Teamsitzung ergänzen:
+- …
+
+#### ABC-Methode
+
+Zu jedem Buchstaben eine Idee zum Thema «Wirtschaft im Wettlauf um den Bunker»:
+
+| | | | |
+|---|---|---|---|
+| **A** Auktion um Bunkerplätze | **B** Bankenpleite | **C** Crowdfunding für einen Gemeinschaftsbunker | **D** Devisenhandel mit schwankenden Kursen |
+| **E** Embargo gegen einen Kontinent | **F** Fusion: zwei Spieler legen Ressourcen zusammen | **G** Gefangenendilemma: Pakt halten oder brechen? | **H** Hyperinflation |
+| **I** Insiderhandel mit Infos über die nächste Karte | **J** Jahresabschluss: Bilanz als Punktewertung | **K** Kartell: Spieler sprechen Preise ab | **L** Lieferkette: Ressourcen brauchen Vorprodukte |
+| **M** Monopol auf eine Ressource | **N** Notenbank druckt Geld | **O** Opportunitätskosten jeder Aktion anzeigen | **P** Pfändung bei Schulden |
+| **Q** Quiz für Bonusgeld | **R** Rationierung: Höchstmengen pro Runde | **S** Sanktionen und Schmuggel | **T** Tauschhandel ohne Geld |
+| **U** Untermiete: Bunkerplatz an andere vermieten | **V** Versicherung mit Kleingedrucktem | **W** Wechselkurs-Spekulation | **X** x-facher Hebel bei Krypto |
+| **Y** Yield: Zinsen auf Ersparnisse | **Z** Zölle zwischen Kontinenten | | |
+
+#### Analogietechnik
+
+«Wie lösen andere Bereiche unser Problem?»
+
+| Unser Problem | Bereich | Wie es dort gelöst wird | Idee für unser Spiel |
+|---|---|---|---|
+| Der Führende soll angreifbar sein | Mario Kart | Der blaue Panzer trifft immer den Ersten | Kopfgeld auf den Spitzenreiter, KI jagt ihn |
+| | Golf | Starke Spieler erhalten ein Handicap | Der Spitzenreiter zahlt mehr fürs Reisen |
+| | Steuerrecht | Progressive Steuer: Wer mehr hat, zahlt prozentual mehr | Vermögenssteuer für den Reichsten |
+| | Wettbewerbsrecht | Die WEKO greift bei Marktbeherrschung ein | Strafe für ein Monopol auf eine Ressource |
+| | Sport (Draft) | Die schwächsten Teams wählen zuerst | Wer zuletzt liegt, zieht zuerst |
+| Weniger Glück, mehr Können | Schach | Kein Zufall, alles ist sichtbar | Kommende Ereignisse sichtbar machen |
+| | Poker | Glück ist da, aber Können entscheidet langfristig | Kleiner Würfel, grosse Wirkung der Strategie |
+
+#### Rollentausch
+
+«Was würde sich … von unserem Spiel wünschen?»
+
+| Rolle | Wunsch | Idee |
+|---|---|---|
+| Gamer:in | Tiefe, Kombinationen, Rangliste | Punktesystem, Ruhmeshalle, Charaktere mit Fähigkeiten |
+| Gelegenheitsspieler:in | In 3 Minuten verstehen | Geführte Tour, Berater, Einsteiger-Modus |
+| Lehrperson | Jede Mechanik zeigt ein Fachkonzept | Erklärung auf jeder Ereigniskarte, Quiz, Lektionen am Ende |
+| Ökonom:in | Realistische Märkte | Preise steigen durch Nachfrage, Inflation, schwankende Kurse |
+| Jurist:in | Rechtliche Folgen | Verträge mit Konventionalstrafe, Betreibung, Volksabstimmung |
+| Zuschauer:in | Spannung und Spektakel | 3D-Globus, Raketen, Atom-Finale |
+
+#### Reizwort / Zufallsmethode
+
+Zufällig gewählte Wörter als Anstoss:
+
+| Reizwort | Idee |
+|---|---|
+| Kühlschrank | Lebensmittel verderben nach 3 Runden → Lagerhaltung |
+| Hochzeit | Zwei Spieler schliessen einen Gesellschaftsvertrag und teilen sich einen Bunkerplatz |
+| Fahrrad | Reisen ohne Geld, aber langsam → Zeit gegen Geld (Opportunitätskosten) |
+| Lotto | Wahl zwischen sicherer Staatsanleihe und riskantem Los |
+| Schlüssel | Bunker brauchen einen Zugangscode, den man handeln oder stehlen kann |
+
+#### Provokationstechnik
+
+«Was wäre, wenn …?»
+
+| Provokation | Idee daraus |
+|---|---|
+| … es gar kein Geld gäbe? | Reiner Tauschhandel – man erlebt, warum Geld erfunden wurde |
+| … alle überleben könnten? | Ein gemeinsamer Bunker als öffentliches Gut, mit Trittbrettfahrern |
+| … man den Bunker schon zu Beginn hätte? | Ein Spiel ums Verteidigen statt ums Bauen |
+| … der Krieg gar nicht kommt? | Der Krieg ist nur ein Gerücht – Panikkäufe und Erwartungen treiben die Preise |
+| … auch Verlierer gewinnen könnten? | Punkte auch ohne Überleben |
+
+#### 6-3-5-Methode ✍️
+
+Die klassische Methode braucht 6 Personen. Für unser Team passen wir sie an: **jede Person schreibt 3 Ideen in 5 Minuten** und gibt das Blatt dann weiter. Die nächste Person entwickelt die Ideen weiter. So viele Runden, wie es Teammitglieder gibt.
+
+| Runde | Idee 1 | Idee 2 | Idee 3 |
+|---|---|---|---|
+| 1 (✍️ Name) | | | |
+| 2 (✍️ Name) | | | |
+| 3 (✍️ Name) | | | |
+
+#### Ideen clustern
+
+| Cluster | Ideen |
+|---|---|
+| 💱 Märkte & Geld | Devisenhandel, Wechselkurs-Spekulation, Aktien, Hyperinflation, Notenbank, Tauschhandel, Zölle, Yield, Lotto vs. Anleihe |
+| ⚖️ Recht & Staat | Verträge mit Strafe, Volksabstimmung, Kartell- und Monopolstrafe, Pfändung, Embargo, Versicherung mit Kleingedrucktem, Schwarzmarkt |
+| ⚔️ Konflikt & Fairness | Kopfgeld, Handicap für den Führenden, Letzter zieht zuerst, Sabotage, Verräter |
+| 🤝 Kooperation | Gemeinschaftsbunker, Fusion / Gesellschaftsvertrag, Crowdfunding, Untermiete |
+| ⏱️ Zeit & Tempo | Zugtimer, Lebensmittel verderben, Fahrrad-Reise, Krieg nur ein Gerücht |
+| 🎯 Spielziel | Bunker bauen, Bunkerplätze ersteigern, Bunker verteidigen, Punkte statt nur Überleben |
+
+### 4.3 Divergente Ideenfindung: Ziel / Konzept
+
+Aus den Clustern haben wir drei Konzepte grob skizziert.
+
+#### Konzept A – «BUNKER: Der Wettlauf»
+
+| | |
+|---|---|
+| **Zentrale Spielmechanik** | Wettrennen und Set-Collection (Bunker-Ressourcen sammeln), Handel mit Währungen, Angriffe auf den Führenden |
+| **Wichtige Elemente** | Zeitdruck (geheimer Kriegsausbruch, DEFCON) · begrenzter Zufall (Ereigniskarte eine Runde voraus sichtbar, Würfel 1–3) · Sammelmechanik mit Rohstoff-Joker · Knappheit (halb so viele Bunker wie Spieler) |
+| **Spielablauf** | Vorbereitung (Charakter, Startkontinent, Startgeld) → Zugreihenfolge reihum mit 3 Aktionspunkten → Rundenablauf (Ereigniskarte, Einkommen, Züge, alle 3 Runden eine Volksabstimmung) → Kriegsausbruch beendet das Spiel → Auswertung (Überleben und Punkte) |
+| **Gewinnen** | Wer beim Kriegsausbruch im eigenen, fertigen Bunker sitzt und keine Schulden hat, überlebt. Die Rangliste ergibt sich aus Punkten. |
+| **W&R-Themen** | Wechselkurse, Inflation, Zinseszins, Angebot und Nachfrage, Verträge, Strafrecht, direkte Demokratie |
+| **Elevator Pitch** | «Reist um die Welt, handelt mit schwankenden Währungen und sammelt Ressourcen für einen der wenigen Bunkerplätze – doch wer vorne liegt, wird von allen gejagt.» |
+
+#### Konzept B – «BUNKER: Die Versteigerung»
+
+| | |
+|---|---|
+| **Zentrale Spielmechanik** | Versteigerung mit verdeckten Geboten und Bluffen |
+| **Wichtige Elemente** | Alle 3 Runden wird ein Bunkerplatz versteigert · Geld ist knapp · wer zu viel bietet, hat danach keine Vorräte mehr («Fluch des Gewinners») · Zeitdruck: nur wenige Auktionen bis zum Krieg |
+| **Spielablauf** | Vorbereitung → Wirtschaftsrunden (handeln, arbeiten, spekulieren) → Auktionsrunde (verdeckte Gebote, Zuschlag an das höchste Gebot) → Spielende, wenn alle Plätze vergeben sind oder der Krieg ausbricht → Auswertung (Platz und Vorräte) |
+| **Gewinnen** | Wer einen Bunkerplatz und genug Vorräte hat, überlebt. |
+| **W&R-Themen** | Auktion, Vertragsschluss durch den Zuschlag (Art. 229 OR), Zahlungsbereitschaft, Fluch des Gewinners |
+| **Elevator Pitch** | «Bunkerplätze gehen an die Höchstbietenden – aber wer sein ganzes Geld bietet, hat im Bunker nichts mehr zu essen.» |
+
+#### Konzept C – «BUNKER: Gemeinsam oder allein»
+
+| | |
+|---|---|
+| **Zentrale Spielmechanik** | Kooperation gegen das Spiel, mit geheimen Rollen und Bluffen |
+| **Wichtige Elemente** | Alle bauen gemeinsam einen Stadtbunker · jede Person entscheidet verdeckt, wie viel sie beiträgt oder für sich behält · ein Spieler ist heimlich «Spekulant» und profitiert, wenn der Bunker scheitert · Zeitdruck |
+| **Spielablauf** | Vorbereitung (geheime Rollen verteilen) → jede Runde: Ressourcen verdienen → verdeckt beitragen → Ereignis → Diskussion und Verdacht → Kriegsausbruch → Auswertung (Ist der Bunker fertig? Wer hat wie viel beigetragen?) |
+| **Gewinnen** | Ist der Bunker rechtzeitig fertig, überleben alle. Gewinner ist, wer dabei am meisten Vermögen behalten hat. Der Spekulant gewinnt, wenn der Bunker scheitert. |
+| **W&R-Themen** | Öffentliche Güter, Trittbrettfahrer-Problem, Gefangenendilemma, Vertrauen |
+| **Elevator Pitch** | «Alle brauchen den gemeinsamen Bunker – aber jeder Franken, den du beiträgst, fehlt dir selbst, und jemand im Team will, dass ihr scheitert.» |
+
+### 4.4 Konvergentes Denken: Bewertung und Auswahl
+
+Bewertung von 1 (schlecht) bis 5 (sehr gut). ✍️ Das ist unser Vorschlag – bewertet im Team gemeinsam und passt die Zahlen an.
+
+| Kriterium | A Wettlauf | B Versteigerung | C Gemeinsam oder allein |
+|---|---|---|---|
+| Passt zur Zielgruppe und zu den HMW-Fragen (Skillcap, Strategie, Führender angreifbar, Spieldauer) | 5 | 4 | 3 |
+| Umsetzbar mit vertretbarem Aufwand (Material, Regelkomplexität) | 5 | 3 | 2 |
+| Einzigartiges Spielerlebnis gegenüber bestehenden Spielen | 4 | 3 | 4 |
+| In wenigen Sätzen erklärbar (Elevator Pitch) | 4 | 5 | 3 |
+| Gehalt an Wirtschaft & Recht (Bildungsauftrag) | 5 | 4 | 5 |
+| **Total** | **23** | **19** | **17** |
+
+Begründungen:
+- **A** erfüllt die HMW-Fragen am besten (Spitzenreiter, kleiner Würfel, sichtbare Karten). Achtung: Bei «umsetzbar» ist A im Vorteil, weil es schon als Prototyp existiert – das sollten wir bei der Bewertung bedenken.
+- **B** ist am einfachsten zu erklären, bietet aber weniger Abwechslung zwischen den Auktionen.
+- **C** hat den stärksten W&R-Gehalt (öffentliche Güter, Gefangenendilemma), ist aber mit geheimen Rollen am Computer schwer umzusetzen und passt weniger zur Aussage «Führender soll angreifbar sein».
+
+**Kombinationen** – oft entstehen die stärksten Konzepte aus mehreren Clustern:
+- **A + B:** Wettlauf mit Bunker-Auktion. Wollen zwei Spieler denselben freien Bunker, wird er versteigert.
+- **A + C:** Zusätzlich zu den privaten Bunkern gibt es einen gemeinsamen Notbunker, der nur fertig wird, wenn alle beitragen.
+
+➔ **Ergebnis der IDEATE-Phase:** 3 vielversprechende Spielkonzepte für die nächste Phase:
+1. **Konzept A «Der Wettlauf»** (als Prototyp schon weit ausgearbeitet, siehe 4.5)
+2. **Kombination A + B «Wettlauf mit Bunker-Auktion»**
+3. **Konzept C «Gemeinsam oder allein»** als mutige Alternative
+
+Die finale Auswahl erfolgt erst in der nächsten Phase (Konzeptionierung).
+
+### 4.5 Ausarbeitung von Konzept A (als Prototyp umgesetzt)
+
+Weil Design Thinking iterativ ist, haben wir Konzept A parallel schon als Prototyp gebaut und getestet (Phase 5). Hier sind die wichtigsten Entscheidungen festgehalten.
+
+#### 4.5.1 Vom ersten Konzept zu den Regeln
 
 Unser erstes Konzept enthielt viele offene Fragen. So haben wir sie gelöst:
 
@@ -219,7 +429,7 @@ Unser erstes Konzept enthielt viele offene Fragen. So haben wir sie gelöst:
 |---|---|
 | Wie viele Spieler, wie viele Bunker? | 2–6 Spieler (Menschen oder KI). Bunker = halb so viele wie Spieler (2–3 Spieler: 1, 4–5: 2, 6: 3). |
 | Wie lange dauert eine Runde? | Jeder Spieler hat pro Runde 3 Aktionspunkte. |
-| Wann bricht der Krieg aus? | Zufällig und geheim beim Spielstart (Kurz 8–11, Normal 12–16, Lang 17–22 Runden). Die DEFCON-Anzeige zeigt ungefähr, wie nah er ist. Ereigniskarten können ihn verschieben. |
+| Wann bricht der Krieg aus? | Zufällig und geheim beim Spielstart (seit Prototyp 7: Kurz 9–11, Normal 13–15, Lang 18–20 Runden). Die DEFCON-Anzeige zeigt ungefähr, wie nah er ist. Ereigniskarten können ihn verschieben, aber nur innerhalb dieses Bereichs. |
 | Wie bewegt man sich? | Klick auf den Globus. Nahe Ziele kosten 70 €, weite 150 €. Technik −30%, Energie −20%. |
 | Wie funktioniert der Bunkerbau? | 3 Lebensmittel + 2 Technik + 3 Energie + 2 Militär, danach 3 Bauschritte (seit Prototyp 6: höchstens 1 pro Zug). Jeder Standort hat eine Eigenschaft. |
 | Wie läuft ein Angriff? | Würfel (seit Prototyp 6: 1–3) + Militär gegen Würfel + Militär. Der Sieger raubt Ressourcen, der Verlierer verliert 1 Militär. Bunker können sabotiert oder gestürmt werden. |
@@ -233,7 +443,7 @@ Unser erstes Konzept enthielt viele offene Fragen. So haben wir sie gelöst:
 | Fremdwährung teurer | Kaufen mit Fremdwährung kostet 30% Aufschlag. |
 | Wer gewinnt? | Wer beim Kriegsausbruch im eigenen, fertigen Bunker sitzt und keine Schulden hat. Seit Prototyp 6 gibt es zusätzlich Punkte für die Rangliste. |
 
-### 4.2 Von den HMW-Fragen zu neuen Ideen
+#### 4.5.2 Von den HMW-Fragen zu neuen Ideen
 
 | How Might We … | Idee | Im Spiel umgesetzt als |
 |---|---|---|
@@ -246,7 +456,7 @@ Unser erstes Konzept enthielt viele offene Fragen. So haben wir sie gelöst:
 
 Weitere Ideen: 8 Charaktere mit Spezialfähigkeiten (Bankerin, General, …), Tag/Nacht-Zyklus, Musik, die schneller wird, je näher der Krieg ist.
 
-### 4.3 Aus der Befragung zu neuen Regeln (Prototyp 6)
+#### 4.5.3 Aus der Befragung zu neuen Regeln (Prototyp 6 und 7)
 
 | Aussage | How Might We … | Idee → umgesetzt im Spiel |
 |---|---|---|
@@ -256,7 +466,7 @@ Weitere Ideen: 8 Charaktere mit Spezialfähigkeiten (Bankerin, General, …), Ta
 | Hoher Skillcap | … gute Spieler auch bei einer Niederlage belohnen? | **Punktesystem:** Überleben 1000 Punkte, pro Bauschritt 100 Punkte, 1 Punkt pro 10 € Vermögen. Die Rangliste und die Ruhmeshalle richten sich nach den Punkten. |
 | Führender angreifbar | … den Führenden angreifbar machen? | **Höchstens 1 Bauschritt pro Zug** – die anderen haben Zeit zu reagieren. **Spitzenreiter 🎯:** Wer am nächsten am Ziel ist, wird auf dem Globus markiert, und alle sehen seine Ressourcen. **150 € Kopfgeld** für jeden erfolgreichen Angriff, jede Sabotage oder Übernahme gegen ihn. **Die KI-Spieler jagen den Spitzenreiter.** |
 | Führender angreifbar | … ohne dass er chancenlos ist? | **Befestigen:** 1 Energie, Militär oder Rohstoff gibt dem eigenen Bunker +1 Verteidigung (max. +3). Eine Baustelle kann pro Runde nur einmal sabotiert werden. |
-| Gleiche Spiellänge | … jede Partie gleich lang machen? | ✍️ **Bewusst noch nicht umgesetzt** (Entscheidung des Teams) – Begründung ergänzen. Mögliche Lösungen: fester Countdown (z. B. immer 8 bzw. 12 Runden), Zugtimer. |
+| Spieldauer ohne grosse Unterschiede | … die Spieldauer überraschend, aber planbar machen? | **Keinen festen Countdown** – unterschiedlich lange Partien machen hier Sinn: Niemand weiss genau, wann der Krieg kommt (Entscheiden unter Unsicherheit). Gemeint war, dass die Unterschiede nicht zu gross sein dürfen. Deshalb **Prototyp 7: engere Bereiche** (Normal 13–15 statt 12–16 Runden), und Ereigniskarten können den Krieg nicht mehr über diese Grenzen hinaus verschieben. |
 
 ---
 
@@ -272,6 +482,7 @@ Weitere Ideen: 8 Charaktere mit Spezialfähigkeiten (Bankerin, General, …), Ta
 | 4 | 25.09.2026 | Volksabstimmung, Quiz, geführte Tour | Start oft auf der dunklen Nachtseite → Sonne startet über dem ersten Spieler. Langsame Computer → automatische Grafikanpassung |
 | 5 | 21.10.2026 | Einsteiger-Modus, Feedback-Formular, Testauswertung, Making-of | Befragung der Zielgruppe (siehe 2.4) → Prototyp 6 |
 | 6 | 28.10.2026 | Würfel 1–3, Ereigniskarte der nächsten Runde sichtbar, Bunker mit Eigenschaften, Punktesystem, 1 Bauschritt pro Zug, Spitzenreiter 🎯 mit Kopfgeld, Befestigen, KI jagt den Spitzenreiter | Automatischer Test (siehe 5.2) · ✍️ Testrunde mit Menschen |
+| 7 | 28.10.2026 | Engere Spieldauer: Kurz 9–11, Normal 13–15, Lang 18–20 Runden. Ereigniskarten verschieben den Krieg nur noch innerhalb dieses Bereichs | Präzisierung der Befragung: Unterschiede in der Spieldauer ja, aber nicht zu gross |
 
 ### 5.2 Automatisierte Tests ✅
 
